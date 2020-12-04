@@ -1,0 +1,10 @@
+[package]
+name = "genetic_forest"
+version = "0.1.0"
+authors = ["Solomon Adams <sadams2013@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+csv = "*"
+sprs = "*"
+rand = "*"
