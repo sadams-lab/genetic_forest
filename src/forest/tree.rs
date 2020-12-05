@@ -1,6 +1,6 @@
 // Make a decision tree
 
-pub fn calc_gini(p: &Vec<u8>, g: &Vec<u8>) -> f32 {
+pub fn calc_gini(p: &Vec<&u8>, g: &Vec<&u8>) -> f32 {
     /* 
     vector of genotypes (0,1,2) (g)
     vector of phenotypes (0,1) (p)
@@ -24,7 +24,7 @@ pub fn calc_gini(p: &Vec<u8>, g: &Vec<u8>) -> f32 {
 
     for pg in p.iter().zip(g.iter()) {
         let (pi, gi) = pg;
-        match (pi, gi) {
+        match (*pi, *gi) {
             (0, 0) => p0g0 += 1.,
             (1, 0) => p1g0 += 1.,
             (0, 1) => p0g1 += 1.,
@@ -41,5 +41,10 @@ pub fn calc_gini(p: &Vec<u8>, g: &Vec<u8>) -> f32 {
     let g1_g = 1. - (p0g1 / (p0g1+p1g1)).powf(pi) - (p1g1 / (p0g1+p1g1)).powf(pi);
     let g2_g = 1. - (p0g2 / (p0g2+p1g2)).powf(pi) - (p1g2 / (p0g2+p1g2)).powf(pi);
 
-    ((p0g0+p1g0/p_inst) * g0_g) + ((p0g1+p1g1/p_inst) * g1_g) + ((p0g2+p1g2/p_inst) * g2_g)
+    let gi = (((p0g0+p1g0)/p_inst) * g0_g) + (((p0g1+p1g1)/p_inst) * g1_g) + (((p0g2+p1g2)/p_inst) * g2_g);
+    if f32::is_nan(gi) {
+        return 0.
+    };
+    return gi
+
 }

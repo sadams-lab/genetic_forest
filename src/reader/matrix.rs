@@ -1,10 +1,13 @@
 use std::fs::File;
 use std::str;
 use sprs::{CsMat, Shape, TriMat};
+use rand::{thread_rng, Rng};
 
 pub struct GenoMatrix {
     pub ids: Vec<String>,
     pub phenotypes: Vec<u8>,
+    pub n_subjects: f64,
+    pub n_genotypes: f64,
     genotypes: CsMat<u8>
 }
 
@@ -34,10 +37,38 @@ impl GenoMatrix {
         GenoMatrix{
             ids: row_ids, 
             phenotypes: phenotypes,
+            n_subjects: mat_size.0 as f64,
+            n_genotypes: mat_size.1 as f64,
             genotypes: geno_mat.to_csr(),
         }
     }
+
+    pub fn random_select(&self, n_vars: &f64, n_subj: &f64) -> (Vec<&u8>, Vec<Vec<&u8>>) {
+        let select_var_prob: f64 = n_vars / self.n_genotypes;
+        let select_subj_prob: f64 = n_subj / self.n_subjects;
+        let mut subjs: Vec<usize> = Vec::new();
+        let mut g_vec: Vec<Vec<&u8>> = Vec::new();
+        let mut p_vec: Vec<&u8> = Vec::new();
+        let mut rng = thread_rng();
+        for s in 0..self.n_subjects as usize {
+            if rng.gen_bool(select_subj_prob) {
+                subjs.push(s);
+                p_vec.push(&self.phenotypes[s]);
+            };
+        };
+        for g in 0..self.n_genotypes as usize {
+            if rng.gen_bool(select_var_prob) {
+                let mut gv: Vec<&u8> = Vec::new();
+                for s in &subjs {
+                    gv.push(self.genotypes.get(*s, g).unwrap());
+                }
+                g_vec.push(gv);
+            };
+        };
+        return (p_vec, g_vec)
+    }
 }
+
 
 fn make_reader(path: &str) -> csv::Reader<File> {
     let file = match File::open(path) {

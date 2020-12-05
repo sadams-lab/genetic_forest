@@ -5,9 +5,7 @@
 mod matrix;
 
 use std::str;
-use std::mem;
 
-pub fn read_csv(path: &str) -> i32 {
-    let foo = matrix::GenoMatrix::new(path);
-    1
+pub fn read_csv(path: &str) -> matrix::GenoMatrix {
+    return matrix::GenoMatrix::new(path);
 }

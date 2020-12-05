@@ -8,12 +8,16 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     let filetype: u8 = input_file_type(&args[1]);
     println!("{:?}, {:?}", args, filetype);
-    let data: i32 = match filetype {
+    let data = match filetype {
         1 => reader::read_csv(&args[1]),
         _ => panic!("Input filetype not implemented!"),
     };
-    println!("{}", data);
-    forest::foo();
+    let sample = data.random_select(&500., &250.);
+    let phenos = &sample.0;
+    for k in &sample.1 {
+        let g = forest::gini(phenos, k);
+        println!("{}", g);
+    }
 }
 
 fn input_file_type(filename: &str) -> u8 {
