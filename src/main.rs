@@ -1,5 +1,7 @@
-mod reader;
-mod forest;
+pub mod reader;
+pub mod forest;
+pub mod matrix;
+pub mod tree;
 
 use std::env;
 
@@ -12,12 +14,7 @@ fn main() {
         1 => reader::read_csv(&args[1]),
         _ => panic!("Input filetype not implemented!"),
     };
-    let sample = data.random_select(&500., &250.);
-    let phenos = &sample.0;
-    for k in &sample.1 {
-        let g = forest::gini(phenos, k);
-        println!("{}", g);
-    }
+    let sample = data.make_slice(&500., &250.);
 }
 
 fn input_file_type(filename: &str) -> u8 {

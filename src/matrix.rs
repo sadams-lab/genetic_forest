@@ -11,6 +11,11 @@ pub struct GenoMatrix {
     genotypes: CsMat<u8>
 }
 
+pub struct GenoMatrixSlice {
+    pub subj_ids: Vec<usize>,
+    pub genotype_ids: Vec<usize>,
+}
+
 impl GenoMatrix {
     
     pub fn new(path: &str) -> Self {
@@ -43,32 +48,45 @@ impl GenoMatrix {
         }
     }
 
-    pub fn random_select(&self, n_vars: &f64, n_subj: &f64) -> (Vec<&u8>, Vec<Vec<&u8>>) {
+    pub fn make_slice(&self, n_vars: &f64, n_subj: &f64) -> GenoMatrixSlice {
         let select_var_prob: f64 = n_vars / self.n_genotypes;
         let select_subj_prob: f64 = n_subj / self.n_subjects;
         let mut subjs: Vec<usize> = Vec::new();
-        let mut g_vec: Vec<Vec<&u8>> = Vec::new();
-        let mut p_vec: Vec<&u8> = Vec::new();
+        let mut g_ids: Vec<usize> = Vec::new();
         let mut rng = thread_rng();
         for s in 0..self.n_subjects as usize {
             if rng.gen_bool(select_subj_prob) {
                 subjs.push(s);
-                p_vec.push(&self.phenotypes[s]);
+
             };
         };
         for g in 0..self.n_genotypes as usize {
             if rng.gen_bool(select_var_prob) {
-                let mut gv: Vec<&u8> = Vec::new();
-                for s in &subjs {
-                    gv.push(self.genotypes.get(*s, g).unwrap());
-                }
-                g_vec.push(gv);
+                g_ids.push(g);
             };
+        };
+        GenoMatrixSlice {
+            subj_ids: subjs,
+            genotype_ids: g_ids
+        }
+    }
+    
+    pub fn get_slice_data(&self, gm: &GenoMatrixSlice) -> (Vec<&u8>, Vec<Vec<&u8>>) {
+        let mut g_vec: Vec<Vec<&u8>> = Vec::new();
+        let mut p_vec: Vec<&u8> = Vec::new();
+        for s in gm.subj_ids {
+            p_vec.push(&self.phenotypes[s]);
+        };
+        for g in gm.genotype_ids {
+            let mut gv: Vec<&u8> = Vec::new();
+            for s in gm.subj_ids {
+                gv.push(self.genotypes.get(s, g).unwrap());
+            }
+            g_vec.push(gv);
         };
         return (p_vec, g_vec)
     }
 }
-
 
 fn make_reader(path: &str) -> csv::Reader<File> {
     let file = match File::open(path) {

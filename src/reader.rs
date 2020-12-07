@@ -2,7 +2,7 @@
 // expects a csv file
 // ID,PHENO,COV1,COV2,COV3
 
-mod matrix;
+use crate::matrix;
 
 use std::str;
 
