@@ -1,7 +1,7 @@
 pub mod reader;
-pub mod forest;
 pub mod matrix;
 pub mod tree;
+pub mod forest;
 
 use std::env;
 
@@ -9,15 +9,11 @@ use std::env;
 fn main() {
     let args: Vec<String> = env::args().collect();
     let filetype: u8 = input_file_type(&args[1]);
-    println!("{:?}, {:?}", args, filetype);
     let data = match filetype {
         1 => reader::read_csv(&args[1]),
         _ => panic!("Input filetype not implemented!"),
     };
-    let sample = data.make_slice(&999., &999.);
-    let data = data.get_slice_data(&sample);
-    let tree = tree::Node::grow(data, 5, sample);
-    println!("{:?}, {:?}", tree.var, tree.gini);
+    let f = forest::Forest::grow(data, 10, 0.333, 5, 0.666, 4);
 }
 
 fn input_file_type(filename: &str) -> u8 {
@@ -28,5 +24,17 @@ fn input_file_type(filename: &str) -> u8 {
         "tsv" => 2,
         "gz" => 9,
         _ => 0,
+    }
+}
+
+fn print_tree(node: tree::Node, above: &usize, side: &str) {
+    println!("{:?}\t{}\t{:?}\t{:?}", above, side, node.var, node.gini);
+    match node.left {
+        Some(n) => print_tree(*n, &node.var, &"left"),
+        None => ()
+    }
+    match node.right {
+        Some(n) => print_tree(*n, &node.var, &"right"),
+        None => ()
     }
 }
