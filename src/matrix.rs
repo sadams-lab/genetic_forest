@@ -74,13 +74,13 @@ impl GenoMatrix {
     pub fn get_slice_data(&self, gm: &GenoMatrixSlice) -> (Vec<&u8>, Vec<Vec<&u8>>) {
         let mut g_vec: Vec<Vec<&u8>> = Vec::new();
         let mut p_vec: Vec<&u8> = Vec::new();
-        for s in gm.subj_ids {
-            p_vec.push(&self.phenotypes[s]);
+        for s in &gm.subj_ids {
+            p_vec.push(&self.phenotypes[*s]);
         };
-        for g in gm.genotype_ids {
+        for g in &gm.genotype_ids {
             let mut gv: Vec<&u8> = Vec::new();
-            for s in gm.subj_ids {
-                gv.push(self.genotypes.get(s, g).unwrap());
+            for s in &gm.subj_ids {
+                gv.push(self.genotypes.get(*s, *g).unwrap());
             }
             g_vec.push(gv);
         };

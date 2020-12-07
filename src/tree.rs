@@ -2,20 +2,21 @@
 
 use crate::matrix;
 
-struct Node {
-    gini: f32,
-    var: usize,
-    left: Box<Node>,
-    right: Box<Node>
+#[derive(Default)]
+pub struct Node {
+    pub gini: f32,
+    pub var: usize,
+    pub left: Option<Box<Node>>,
+    pub right: Option<Box<Node>>
 }
 
 impl Node {
-    pub fn grow(data: (Vec<&u8>,  Vec<Vec<&u8>>), max_depth: i32, ms: matrix::GenoMatrixSlice) -> Self {
-        return new_node(data, &ms);
+    pub fn grow(data: (Vec<&u8>,  Vec<Vec<&u8>>), min_count: i32, ms: matrix::GenoMatrixSlice) -> Self {
+        return new_node(data, &ms, &min_count);
     }
 }
 
-fn new_node(data: (Vec<&u8>,  Vec<Vec<&u8>>), ms: &matrix::GenoMatrixSlice) -> Node {
+fn new_node(data: (Vec<&u8>,  Vec<Vec<&u8>>), ms: &matrix::GenoMatrixSlice, min_count: &i32) -> Node {
     let mut ginis: Vec<f32> = Vec::new();
     let phenos = &data.0;
     for k in &data.1 {
@@ -23,46 +24,90 @@ fn new_node(data: (Vec<&u8>,  Vec<Vec<&u8>>), ms: &matrix::GenoMatrixSlice) -> N
     };
     let min_gini_index: usize = min_gini(&ginis);
     let gini = ginis[min_gini_index];
-    let left_indices = data.1[min_gini_index].iter().map(|r| r==&&0).collect();
-    let right_indices = data.1[min_gini_index].iter().map(|r| r==&&0).collect();
-    let left_genotypes = genotypes_split(&data.1, &left_indices);
-    let right_genotypes = genotypes_split(&data.1, &right_indices);
-    let left_phenotypes = phenotypes_split(&data.0, &left_indices);
-    let right_phenotypes = phenotypes_split(&data.0, &right_indices);
+    let left_indices: &Vec<bool> = &data.1[min_gini_index].iter().map(|r| **r==0).collect();
+    let right_indices: &Vec<bool> = &data.1[min_gini_index].iter().map(|r| **r==1).collect();
+    let new_genotypes = genotypes_split(&data.1, &left_indices, &right_indices);
+    let new_phenotypes = phenotypes_split(&data.0, &left_indices, &right_indices);
+    if sum_bool_vec(&left_indices) <= *min_count && sum_bool_vec(&right_indices) <= *min_count {
+        return Node {
+            gini: gini,
+            var: ms.genotype_ids[min_gini_index],
+            left: None,
+            right: None
+        };
+    }
+    else if sum_bool_vec(&left_indices) <= *min_count {
+        return Node {
+            gini: gini,
+            var: ms.genotype_ids[min_gini_index],
+            left: None,
+            right: Some(Box::new(new_node((new_phenotypes.1, new_genotypes.1), ms, min_count)))
+        };
+
+    }
+    else if sum_bool_vec(&right_indices) <= *min_count {
+        return Node {
+            gini: gini,
+            var: ms.genotype_ids[min_gini_index],
+            left: Some(Box::new(new_node((new_phenotypes.0, new_genotypes.0), ms, min_count))),
+            right: None
+        };
+        
+    }
     Node {
         gini: gini,
         var: ms.genotype_ids[min_gini_index],
-        left: Box::new(new_node((left_phenotypes, left_genotypes), ms)),
-        right: Box::new(new_node((right_phenotypes, right_genotypes), ms))
+        left: Some(Box::new(new_node((new_phenotypes.0, new_genotypes.0), ms, min_count))),
+        right: Some(Box::new(new_node((new_phenotypes.1, new_genotypes.1), ms, min_count)))
     }
 }
 
-fn genotypes_split<'a>(genotypes: &Vec<Vec<&'a u8>>, indices: &Vec<bool>) -> Vec<Vec<&'a u8>> {
-    let mut new_genotypes: Vec<Vec<&u8>> = Vec::new();
-    for g in genotypes {
-        let mut ind: usize = 0;
-        let mut new_geno: Vec<&u8> = Vec::new();
-        for i in indices {
-            if *i {
-                new_geno.push(g[ind]);
-            }
-        }
-        new_genotypes.push(new_geno);
-        ind += 1;
-    };
-    return new_genotypes;
+fn sum_bool_vec(v: &Vec<bool>) -> i32 {
+    let mut s: i32 = 0;
+    for b in v{
+        if *b {
+            s += 1;
+        };
+    }
+    return s;
 }
 
-fn phenotypes_split<'a>(phenotypes: &Vec<&'a u8>, indices: &Vec<bool>) -> Vec<&'a u8> {
-    let mut new_phenotypes: Vec<&u8> = Vec::new();
-    let mut ind: usize = 0;
-    for i in indices {
-        if *i {
-            new_phenotypes.push(phenotypes[ind]);
+fn genotypes_split<'a>(genotypes: &Vec<Vec<&'a u8>>, left_indices: &Vec<bool>, right_indices: &Vec<bool>) -> (Vec<Vec<&'a u8>>, Vec<Vec<&'a u8>>) {
+    let mut left_genotypes: Vec<Vec<&u8>> = Vec::new();
+    let mut right_genotypes: Vec<Vec<&u8>> = Vec::new();
+    for g in genotypes {
+        let mut ind: usize = 0;
+        let mut left_geno: Vec<&u8> = Vec::new();
+        let mut right_geno: Vec<&u8> = Vec::new();
+        for i in left_indices.iter().zip(right_indices.iter()) {
+            if *i.0 {
+                left_geno.push(g[ind]);
+            }
+            if *i.1 {
+                right_geno.push(g[ind]);
+            }
+            ind += 1;
         }
-    ind += 1;
+        left_genotypes.push(left_geno);
+        right_genotypes.push(right_geno)
     };
-    return new_phenotypes;
+    return (left_genotypes, right_genotypes);
+}
+
+fn phenotypes_split<'a>(phenotypes: &Vec<&'a u8>, left_indices: &Vec<bool>, right_indices: &Vec<bool>) -> (Vec<&'a u8>, Vec<&'a u8>)  {
+    let mut left_phenotypes: Vec<&u8> = Vec::new();
+    let mut right_phenotypes: Vec<&u8> = Vec::new();
+    let mut ind: usize = 0;
+    for i in left_indices.iter().zip(right_indices.iter()) {
+        if *i.0 {
+            left_phenotypes.push(phenotypes[ind]);
+        };
+        if *i.1 {
+            right_phenotypes.push(phenotypes[ind]);
+        }
+        ind += 1;
+    };
+    return (left_phenotypes, right_phenotypes);
 }
 
 
@@ -100,8 +145,6 @@ pub fn calc_gini(p: &Vec<&u8>, g: &Vec<&u8>) -> f32 {
     let mut p1g0: f32 = 0.;
     let mut p0g1: f32 = 0.;
     let mut p1g1: f32 = 0.;
-    let mut p0g2: f32 = 0.;
-    let mut p1g2: f32 = 0.;
 
     for pg in p.iter().zip(g.iter()) {
         let (pi, gi) = pg;
@@ -121,8 +164,7 @@ pub fn calc_gini(p: &Vec<&u8>, g: &Vec<&u8>) -> f32 {
 
     let gi = (((p0g0+p1g0)/p_inst) * g0_g) + (((p0g1+p1g1)/p_inst) * g1_g);
     if f32::is_nan(gi) {
-        return 0.
+        return 1.
     };
     return gi
-
 }

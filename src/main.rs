@@ -14,7 +14,10 @@ fn main() {
         1 => reader::read_csv(&args[1]),
         _ => panic!("Input filetype not implemented!"),
     };
-    let sample = data.make_slice(&500., &250.);
+    let sample = data.make_slice(&999., &999.);
+    let data = data.get_slice_data(&sample);
+    let tree = tree::Node::grow(data, 5, sample);
+    println!("{:?}, {:?}", tree.var, tree.gini);
 }
 
 fn input_file_type(filename: &str) -> u8 {
