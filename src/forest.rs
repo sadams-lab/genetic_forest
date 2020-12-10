@@ -2,6 +2,7 @@ use crate::tree;
 use crate::matrix;
 use rayon::prelude::*;
 
+
 pub struct Forest {
     pub trees: Vec<tree::Node>
 }

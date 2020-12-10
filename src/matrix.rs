@@ -2,6 +2,7 @@ use std::fs::File;
 use std::str;
 use sprs::{CsMat, Shape, TriMat};
 use rand::{thread_rng, Rng};
+use rand::seq::SliceRandom;
 
 pub struct GenoMatrix {
     pub ids: Vec<String>,
@@ -71,7 +72,7 @@ impl GenoMatrix {
         }
     }
     
-    pub fn get_slice_data(&self, gm: &GenoMatrixSlice) -> (Vec<&u8>, Vec<Vec<&u8>>) {
+    pub fn get_slice_data(&self, gm: &GenoMatrixSlice) -> (Vec<&u8>, Vec<&u8>, Vec<Vec<&u8>>) {
         let mut g_vec: Vec<Vec<&u8>> = Vec::new();
         let mut p_vec: Vec<&u8> = Vec::new();
         for s in &gm.subj_ids {
@@ -84,7 +85,9 @@ impl GenoMatrix {
             }
             g_vec.push(gv);
         };
-        return (p_vec, g_vec)
+        let mut pheno2: Vec<&u8> = p_vec.to_vec();
+        pheno2.shuffle(&mut thread_rng());
+        return (p_vec, pheno2, g_vec)
     }
 }
 

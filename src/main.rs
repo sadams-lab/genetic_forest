@@ -14,6 +14,9 @@ fn main() {
         _ => panic!("Input filetype not implemented!"),
     };
     let f = forest::Forest::grow(data, 10, 0.333, 5, 0.666, 4);
+    for tree in f.trees {
+        print_tree(tree, &9999, &"SIDE")
+    }
 }
 
 fn input_file_type(filename: &str) -> u8 {

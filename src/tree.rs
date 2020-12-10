@@ -1,5 +1,5 @@
 // Make a decision tree
-
+//TODO: make the shuffle/calc happen during the gini calculation!
 use crate::matrix;
 
 #[derive(Default)]
@@ -11,23 +11,32 @@ pub struct Node {
 }
 
 impl Node {
-    pub fn grow(data: (Vec<&u8>,  Vec<Vec<&u8>>), min_count: i32, ms: matrix::GenoMatrixSlice) -> Self {
+    pub fn grow(data: (Vec<&u8>, Vec<&u8>, Vec<Vec<&u8>>), min_count: i32, ms: matrix::GenoMatrixSlice) -> Self {
         return new_node(data, &ms, &min_count);
     }
 }
 
-fn new_node(data: (Vec<&u8>,  Vec<Vec<&u8>>), ms: &matrix::GenoMatrixSlice, min_count: &i32) -> Node {
+fn new_node(data: (Vec<&u8>, Vec<&u8>, Vec<Vec<&u8>>), ms: &matrix::GenoMatrixSlice, min_count: &i32) -> Node {
     let mut ginis: Vec<f32> = Vec::new();
     let phenos = &data.0;
-    for k in &data.1 {
-        ginis.push(calc_gini(phenos, k));
+    let phenos2 = &data.1;
+    for k in &data.2 {
+        let gini = calc_gini(phenos, k);
+        let gini2 = calc_gini(phenos2, k);
+        if gini < gini2 {
+            ginis.push(gini);
+        }
+        else {
+            ginis.push(-1. * gini2);
+        }
     };
     let min_gini_index: usize = min_gini(&ginis);
     let gini = ginis[min_gini_index];
-    let left_indices: &Vec<bool> = &data.1[min_gini_index].iter().map(|r| **r==0).collect();
-    let right_indices: &Vec<bool> = &data.1[min_gini_index].iter().map(|r| **r==1).collect();
-    let new_genotypes = genotypes_split(&data.1, &left_indices, &right_indices);
+    let left_indices: &Vec<bool> = &data.2[min_gini_index].iter().map(|r| **r==0).collect();
+    let right_indices: &Vec<bool> = &data.2[min_gini_index].iter().map(|r| **r==1).collect();
+    let new_genotypes = genotypes_split(&data.2, &left_indices, &right_indices);
     let new_phenotypes = phenotypes_split(&data.0, &left_indices, &right_indices);
+    let new_phenotypes_2 = phenotypes_split(&data.1, &left_indices, &right_indices);
     if sum_bool_vec(&left_indices) <= *min_count && sum_bool_vec(&right_indices) <= *min_count {
         return Node {
             gini: gini,
@@ -41,7 +50,7 @@ fn new_node(data: (Vec<&u8>,  Vec<Vec<&u8>>), ms: &matrix::GenoMatrixSlice, min_
             gini: gini,
             var: ms.genotype_ids[min_gini_index],
             left: None,
-            right: Some(Box::new(new_node((new_phenotypes.1, new_genotypes.1), ms, min_count)))
+            right: Some(Box::new(new_node((new_phenotypes.1, new_phenotypes_2.1, new_genotypes.1), ms, min_count)))
         };
 
     }
@@ -49,7 +58,7 @@ fn new_node(data: (Vec<&u8>,  Vec<Vec<&u8>>), ms: &matrix::GenoMatrixSlice, min_
         return Node {
             gini: gini,
             var: ms.genotype_ids[min_gini_index],
-            left: Some(Box::new(new_node((new_phenotypes.0, new_genotypes.0), ms, min_count))),
+            left: Some(Box::new(new_node((new_phenotypes.0, new_phenotypes_2.0, new_genotypes.0), ms, min_count))),
             right: None
         };
         
@@ -57,8 +66,8 @@ fn new_node(data: (Vec<&u8>,  Vec<Vec<&u8>>), ms: &matrix::GenoMatrixSlice, min_
     Node {
         gini: gini,
         var: ms.genotype_ids[min_gini_index],
-        left: Some(Box::new(new_node((new_phenotypes.0, new_genotypes.0), ms, min_count))),
-        right: Some(Box::new(new_node((new_phenotypes.1, new_genotypes.1), ms, min_count)))
+        left: Some(Box::new(new_node((new_phenotypes.0, new_phenotypes_2.0, new_genotypes.0), ms, min_count))),
+        right: Some(Box::new(new_node((new_phenotypes.1, new_phenotypes_2.1, new_genotypes.1), ms, min_count)))
     }
 }
 
@@ -113,12 +122,13 @@ fn phenotypes_split<'a>(phenotypes: &Vec<&'a u8>, left_indices: &Vec<bool>, righ
 
 fn min_gini(ginis: &Vec<f32>) -> usize {
     // Take vector of floats, return the index of the minumum
-    let mut min_gin: &f32 = &1.;
+    let mut min_gin: f32 = 1.;
     let mut min_i: usize = 0;
     let mut i: usize = 0;
     for g in ginis {
-        if g < min_gin {
-            min_gin = g;
+        let abs_gini = g.abs();
+        if abs_gini < min_gin {
+            min_gin = *g;
             min_i = i;
         };
         i += 1;
