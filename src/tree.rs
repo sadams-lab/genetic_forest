@@ -2,6 +2,8 @@
 //TODO: make the shuffle/calc happen during the gini calculation!
 use crate::matrix;
 
+use std::collections::HashMap;
+
 #[derive(Default)]
 pub struct Node {
     pub gini: f32,
@@ -14,7 +16,45 @@ impl Node {
     pub fn grow(data: (Vec<&u8>, Vec<&u8>, Vec<Vec<&u8>>), min_count: i32, ms: matrix::GenoMatrixSlice) -> Self {
         return new_node(data, &ms, &min_count);
     }
+
+    pub fn print(&self, above: &usize, side: &str) {
+        println!("{:?}\t{}\t{:?}\t{:?}", above, side, self.var, self.gini);
+        match &self.left {
+            Some(n) => n.print(&self.var, &"left"),
+            None => ()
+        }
+        match &self.right {
+            Some(n) => n.print(&self.var, &"right"),
+            None => ()
+        }
+    }
+
+    pub fn get_importance(&self) -> HashMap<usize, Vec<f32>> {
+        let mut var_imp: HashMap<usize, Vec<f32>> = HashMap::new();
+        fn imp(n: &Node, vi: &mut HashMap<usize, Vec<f32>>) {
+            if vi.contains_key(&n.var) {
+                let mut n_varvec = vi[&n.var].to_vec();
+                n_varvec.push(n.gini);
+                vi.remove(&n.var);
+                vi.insert(n.var, n_varvec);
+            }
+            else {
+                vi.insert(n.var, vec![n.gini]);
+            }
+            match &n.left {
+                Some(nl) => imp(&nl, vi),
+                None => ()
+            };
+            match &n.right {
+                Some(nr) => imp(&nr, vi),
+                None => ()
+            };
+        }
+        imp(self, &mut var_imp);
+        return var_imp
+    }
 }
+
 
 fn new_node(data: (Vec<&u8>, Vec<&u8>, Vec<Vec<&u8>>), ms: &matrix::GenoMatrixSlice, min_count: &i32) -> Node {
     let mut ginis: Vec<f32> = Vec::new();

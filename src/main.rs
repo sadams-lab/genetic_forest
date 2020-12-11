@@ -14,9 +14,11 @@ fn main() {
         _ => panic!("Input filetype not implemented!"),
     };
     let f = forest::Forest::grow(data, 10, 0.333, 5, 0.666, 4);
-    for tree in f.trees {
-        print_tree(tree, &9999, &"SIDE")
-    }
+    f.var_importance();
+    //for tree in f.trees {
+        //tree.print(&9999, &"SIDE")
+        
+    //}
 }
 
 fn input_file_type(filename: &str) -> u8 {
@@ -30,14 +32,3 @@ fn input_file_type(filename: &str) -> u8 {
     }
 }
 
-fn print_tree(node: tree::Node, above: &usize, side: &str) {
-    println!("{:?}\t{}\t{:?}\t{:?}", above, side, node.var, node.gini);
-    match node.left {
-        Some(n) => print_tree(*n, &node.var, &"left"),
-        None => ()
-    }
-    match node.right {
-        Some(n) => print_tree(*n, &node.var, &"right"),
-        None => ()
-    }
-}

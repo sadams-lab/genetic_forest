@@ -19,6 +19,14 @@ impl Forest {
         }).collect();
         Forest {trees: t}
     }
+    
+    pub fn var_importance(&self) {
+        for tree in &self.trees {
+            for v in tree.get_importance() {
+                println!("{:?}, {:?}", v.0, v.1);
+            }
+        }
+    }
 }
 
 fn make_tree(gm: &matrix::GenoMatrix, n_vars: &f64, n_subj: &f64, min_node_size: &i32) -> tree::Node {
