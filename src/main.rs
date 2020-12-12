@@ -13,7 +13,7 @@ fn main() {
         1 => reader::read_csv(&args[1]),
         _ => panic!("Input filetype not implemented!"),
     };
-    let f = forest::Forest::grow(data, 10000, 0.033, 3, 0.333, 4);
+    let f = forest::Forest::grow(data, 10000, 0.01, 5, 0.333, 4, 1017);
     f.var_importance();
 }
 

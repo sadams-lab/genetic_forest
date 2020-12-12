@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::str;
 use sprs::{CsMat, Shape, TriMat};
-use rand::{thread_rng, Rng};
+use rand::{Rng, SeedableRng, rngs::StdRng};
 use rand::seq::SliceRandom;
 
 pub struct GenoMatrix {
@@ -49,12 +49,12 @@ impl GenoMatrix {
         }
     }
 
-    pub fn make_slice(&self, n_vars: &f64, n_subj: &f64) -> GenoMatrixSlice {
+    pub fn make_slice(&self, n_vars: &f64, n_subj: &f64, seed: &u64) -> GenoMatrixSlice {
         let select_var_prob: f64 = n_vars / self.n_genotypes;
         let select_subj_prob: f64 = n_subj / self.n_subjects;
         let mut subjs: Vec<usize> = Vec::new();
         let mut g_ids: Vec<usize> = Vec::new();
-        let mut rng = thread_rng();
+        let mut rng = StdRng::seed_from_u64(*seed);
         for s in 0..self.n_subjects as usize {
             if rng.gen_bool(select_subj_prob) {
                 subjs.push(s);
@@ -72,7 +72,8 @@ impl GenoMatrix {
         }
     }
     
-    pub fn get_slice_data(&self, gm: &GenoMatrixSlice) -> (Vec<&u8>, Vec<&u8>, Vec<Vec<&u8>>) {
+    pub fn get_slice_data(&self, gm: &GenoMatrixSlice, seed: &u64) -> (Vec<&u8>, Vec<&u8>, Vec<Vec<&u8>>) {
+        let mut rng = StdRng::seed_from_u64(*seed);
         let mut g_vec: Vec<Vec<&u8>> = Vec::new();
         let mut p_vec: Vec<&u8> = Vec::new();
         for s in &gm.subj_ids {
@@ -86,7 +87,7 @@ impl GenoMatrix {
             g_vec.push(gv);
         };
         let mut pheno2: Vec<&u8> = p_vec.to_vec();
-        pheno2.shuffle(&mut thread_rng());
+        pheno2.shuffle(&mut rng);
         return (p_vec, pheno2, g_vec)
     }
 }
