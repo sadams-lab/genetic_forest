@@ -2,3 +2,5 @@
 **/*.rs.bk
 *.csv
 .DS_Store
+test/
+scripts/env
