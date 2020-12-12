@@ -13,12 +13,8 @@ fn main() {
         1 => reader::read_csv(&args[1]),
         _ => panic!("Input filetype not implemented!"),
     };
-    let f = forest::Forest::grow(data, 10, 0.333, 5, 0.666, 4);
+    let f = forest::Forest::grow(data, 10000, 0.033, 3, 0.333, 4);
     f.var_importance();
-    //for tree in f.trees {
-        //tree.print(&9999, &"SIDE")
-        
-    //}
 }
 
 fn input_file_type(filename: &str) -> u8 {

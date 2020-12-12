@@ -2,6 +2,8 @@ use crate::tree;
 use crate::matrix;
 use rayon::prelude::*;
 
+use std::collections::HashMap;
+
 
 pub struct Forest {
     pub trees: Vec<tree::Node>
@@ -21,10 +23,24 @@ impl Forest {
     }
     
     pub fn var_importance(&self) {
+        let mut tree_imps: HashMap<usize, Vec<f32>> = HashMap::new();
         for tree in &self.trees {
-            for v in tree.get_importance() {
-                println!("{:?}, {:?}", v.0, v.1);
+            for (var, imp) in tree.get_importance() {
+                if tree_imps.contains_key(&var) {
+                    let n_imp = &mut imp.to_vec();
+                    let mut n_vec = tree_imps[&var].to_vec();
+                    n_vec.append(n_imp);
+                    tree_imps.remove(&var);
+                    tree_imps.insert(var, n_vec);
+                }
+                else {
+                    tree_imps.insert(var, imp);
+                }
             }
+        }
+        for (var, imp) in tree_imps {
+            let mean: f32 = imp.iter().sum::<f32>() / imp.len() as f32;
+            println!("{:?}\t{:?}", var, mean);
         }
     }
 }
