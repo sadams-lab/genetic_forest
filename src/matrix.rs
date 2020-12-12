@@ -98,7 +98,7 @@ fn make_reader(path: &str) -> csv::Reader<File> {
     };
     return csv::ReaderBuilder::new()
         .has_headers(true)
-        .delimiter(b',')
+        .delimiter(b'\t')
         .comment(Some(b'#'))
         .from_reader(file);
 }
