@@ -7,9 +7,10 @@ use std::collections::HashMap;
 #[derive(Default)]
 pub struct Node {
     pub gini: f32,
+    pub n: usize, // Number of subjects in tree
     pub neg: bool,
     pub var: usize,
-    pub n: usize, // Number of subjects in node, needed for importance calculation of parent node
+    pub node_n: usize, // Number of subjects in node, needed for importance calculation of parent node
     pub left: Option<Box<Node>>,
     pub right: Option<Box<Node>>
 }
@@ -17,7 +18,8 @@ pub struct Node {
 impl Node {
 
     pub fn grow(data: (Vec<&u8>, Vec<&u8>, Vec<Vec<&u8>>), min_count: i32, ms: matrix::GenoMatrixSlice) -> Self {
-        return Node::new_node(data, &ms, &min_count);
+        let node_n = data.0.len();
+        return Node::new_node(data, &ms, &min_count, node_n);
     }
 
     pub fn print(&self, above: &usize, side: &str) {
@@ -35,18 +37,22 @@ impl Node {
     pub fn get_importance(&self) -> HashMap<usize, Vec<f32>> {
         let mut var_imp: HashMap<usize, Vec<f32>> = HashMap::new();
         fn imp(n: &Node, vi: &mut HashMap<usize, Vec<f32>>) {
-            let mut importance: f32 = n.gini;
+            let mut importance: f32 = (n.node_n as f32 / n.n as f32) * (1. / n.gini);
             match &n.left {
                 Some(nl) => {
-                    importance -= (&nl.n / n.n) as f32 * &nl.gini;
-                    imp(&nl, vi);
+                    if &nl.gini > &0. {
+                        importance -= (&nl.node_n / n.n) as f32 * (1. / &nl.gini);
+                        imp(&nl, vi);
+                    }
                 },
                 None => ()
             };
             match &n.right {
                 Some(nr) => {
-                    importance -= (&nr.n / n.n) as f32 * &nr.gini;
-                    imp(&nr, vi);
+                    if &nr.gini > &0. {
+                        importance -= (&nr.node_n / n.n) as f32 * (1. / &nr.gini);
+                        imp(&nr, vi);
+                    }
                 },
                 None => ()
             };
@@ -67,7 +73,7 @@ impl Node {
         return var_imp
     }
 
-    fn new_node(data: (Vec<&u8>, Vec<&u8>, Vec<Vec<&u8>>), ms: &matrix::GenoMatrixSlice, min_count: &i32) -> Node {
+    fn new_node(data: (Vec<&u8>, Vec<&u8>, Vec<Vec<&u8>>), ms: &matrix::GenoMatrixSlice, min_count: &i32, n: usize) -> Node {
         let mut ginis: Vec<f32> = Vec::new();
         let phenos = &data.0;
         let phenos2 = &data.1;
@@ -96,8 +102,9 @@ impl Node {
         if sum_bool_vec(&left_indices) <= *min_count && sum_bool_vec(&right_indices) <= *min_count {
             return Node {
                 gini: gini,
+                n: n,
                 neg: neg,
-                n: phenos.len(),
+                node_n: phenos.len(),
                 var: ms.genotype_ids[min_gini_index],
                 left: None,
                 right: None
@@ -106,32 +113,35 @@ impl Node {
         else if sum_bool_vec(&left_indices) <= *min_count {
             return Node {
                 gini: gini,
+                n: n,
                 neg: neg,
-                n: phenos.len(),
+                node_n: phenos.len(),
                 var: ms.genotype_ids[min_gini_index],
                 left: None,
-                right: Some(Box::new(Node::new_node((new_phenotypes.1, new_phenotypes_2.1, new_genotypes.1), ms, min_count)))
+                right: Some(Box::new(Node::new_node((new_phenotypes.1, new_phenotypes_2.1, new_genotypes.1), ms, min_count, n)))
             };
     
         }
         else if sum_bool_vec(&right_indices) <= *min_count {
             return Node {
                 gini: gini,
+                n: n,
                 neg: neg,
-                n: phenos.len(),
+                node_n: phenos.len(),
                 var: ms.genotype_ids[min_gini_index],
-                left: Some(Box::new(Node::new_node((new_phenotypes.0, new_phenotypes_2.0, new_genotypes.0), ms, min_count))),
+                left: Some(Box::new(Node::new_node((new_phenotypes.0, new_phenotypes_2.0, new_genotypes.0), ms, min_count, n))),
                 right: None
             };
             
         }
         Node {
             gini: gini,
+            n: n,
             neg: neg,
-            n: phenos.len(),
+            node_n: phenos.len(),
             var: ms.genotype_ids[min_gini_index],
-            left: Some(Box::new(Node::new_node((new_phenotypes.0, new_phenotypes_2.0, new_genotypes.0), ms, min_count))),
-            right: Some(Box::new(Node::new_node((new_phenotypes.1, new_phenotypes_2.1, new_genotypes.1), ms, min_count)))
+            left: Some(Box::new(Node::new_node((new_phenotypes.0, new_phenotypes_2.0, new_genotypes.0), ms, min_count, n))),
+            right: Some(Box::new(Node::new_node((new_phenotypes.1, new_phenotypes_2.1, new_genotypes.1), ms, min_count, n)))
         }
     }
 }
