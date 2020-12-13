@@ -6,6 +6,6 @@ use crate::matrix;
 
 use std::str;
 
-pub fn read_csv(path: &str) -> matrix::GenoMatrix {
-    return matrix::GenoMatrix::new(path);
+pub fn read_csv(path: &str, sep: &str) -> matrix::GenoMatrix {
+    return matrix::GenoMatrix::new(path, sep);
 }

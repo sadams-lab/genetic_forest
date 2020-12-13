@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::str;
 use sprs::{CsMat, Shape, TriMat};
-use rand::{Rng, SeedableRng, rngs::StdRng};
+use rand::{Rng, thread_rng};
 use rand::seq::SliceRandom;
 
 pub struct GenoMatrix {
@@ -19,12 +19,12 @@ pub struct GenoMatrixSlice {
 
 impl GenoMatrix {
     
-    pub fn new(path: &str) -> Self {
+    pub fn new(path: &str, sep: &str) -> Self {
         let mut row_ids: Vec<String> = Vec::new();
         let mut phenotypes: Vec<u8> = Vec::new();
-        let mat_size: Shape = get_mat_size(path);
+        let mat_size: Shape = get_mat_size(path, sep);
         let mut geno_mat = TriMat::new(mat_size);
-        let mut rdr = make_reader(path);
+        let mut rdr = make_reader(path, sep);
         let mut rownum = 0;
         for result in rdr.records() {
             let mut colnum = 2;
@@ -49,12 +49,12 @@ impl GenoMatrix {
         }
     }
 
-    pub fn make_slice(&self, n_vars: &f64, n_subj: &f64, seed: &u64) -> GenoMatrixSlice {
+    pub fn make_slice(&self, n_vars: &f64, n_subj: &f64) -> GenoMatrixSlice {
         let select_var_prob: f64 = n_vars / self.n_genotypes;
         let select_subj_prob: f64 = n_subj / self.n_subjects;
         let mut subjs: Vec<usize> = Vec::new();
         let mut g_ids: Vec<usize> = Vec::new();
-        let mut rng = StdRng::seed_from_u64(*seed);
+        let mut rng = thread_rng();
         for s in 0..self.n_subjects as usize {
             if rng.gen_bool(select_subj_prob) {
                 subjs.push(s);
@@ -72,8 +72,8 @@ impl GenoMatrix {
         }
     }
     
-    pub fn get_slice_data(&self, gm: &GenoMatrixSlice, seed: &u64) -> (Vec<&u8>, Vec<&u8>, Vec<Vec<&u8>>) {
-        let mut rng = StdRng::seed_from_u64(*seed);
+    pub fn get_slice_data(&self, gm: &GenoMatrixSlice) -> (Vec<&u8>, Vec<&u8>, Vec<Vec<&u8>>) {
+        let mut rng = thread_rng();
         let mut g_vec: Vec<Vec<&u8>> = Vec::new();
         let mut p_vec: Vec<&u8> = Vec::new();
         for s in &gm.subj_ids {
@@ -92,22 +92,22 @@ impl GenoMatrix {
     }
 }
 
-fn make_reader(path: &str) -> csv::Reader<File> {
+fn make_reader(path: &str, sep: &str) -> csv::Reader<File> {
     let file = match File::open(path) {
         Ok(f) => f,
         Err(why) => panic!("Something happened with the file: {}", why),
     };
     return csv::ReaderBuilder::new()
         .has_headers(true)
-        .delimiter(b'\t')
+        .delimiter(sep.as_bytes()[0])
         .comment(Some(b'#'))
         .from_reader(file);
 }
 
-fn get_mat_size(path: &str) -> Shape {
+fn get_mat_size(path: &str, sep: &str) -> Shape {
     let mut ncols: usize = 0;
     let mut nrows: usize = 0;
-    let mut rdr = make_reader(path);
+    let mut rdr = make_reader(path, sep);
     for result in rdr.byte_records() {
             let record = result.unwrap();
             if ncols == 0 {
