@@ -50,6 +50,10 @@ impl GenoMatrix {
     }
 
     pub fn make_slice(&self, n_vars: &f64, n_subj: &f64) -> GenoMatrixSlice {
+        // Note that these are all sampling without replacement
+        // We don't implement sampling with replacement for this
+        // Sampling with replacement improves predictive ability of the model
+        // Which we do not care about
         let select_var_prob: f64 = n_vars / self.n_genotypes;
         let select_subj_prob: f64 = n_subj / self.n_subjects;
         let mut subjs: Vec<usize> = Vec::new();
