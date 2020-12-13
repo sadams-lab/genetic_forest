@@ -17,7 +17,7 @@ pub struct Node {
 
 impl Node {
 
-    pub fn grow(data: (Vec<&u8>, Vec<&u8>, Vec<Vec<&u8>>), min_count: i32, ms: matrix::GenoMatrixSlice) -> Self {
+    pub fn grow(data: (Vec<&u64>, Vec<&u64>, Vec<Vec<&u8>>), min_count: i32, ms: matrix::GenoMatrixSlice) -> Self {
         let node_n = data.0.len();
         return Node::new_node(data, &ms, &min_count, node_n);
     }
@@ -73,7 +73,7 @@ impl Node {
         return var_imp
     }
 
-    fn new_node(data: (Vec<&u8>, Vec<&u8>, Vec<Vec<&u8>>), ms: &matrix::GenoMatrixSlice, min_count: &i32, n: usize) -> Node {
+    fn new_node(data: (Vec<&u64>, Vec<&u64>, Vec<Vec<&u8>>), ms: &matrix::GenoMatrixSlice, min_count: &i32, n: usize) -> Node {
         let mut ginis: Vec<f32> = Vec::new();
         let phenos = &data.0;
         let phenos2 = &data.1;
@@ -178,9 +178,9 @@ fn genotypes_split<'a>(genotypes: &Vec<Vec<&'a u8>>, left_indices: &Vec<bool>, r
     return (left_genotypes, right_genotypes);
 }
 
-fn phenotypes_split<'a>(phenotypes: &Vec<&'a u8>, left_indices: &Vec<bool>, right_indices: &Vec<bool>) -> (Vec<&'a u8>, Vec<&'a u8>)  {
-    let mut left_phenotypes: Vec<&u8> = Vec::new();
-    let mut right_phenotypes: Vec<&u8> = Vec::new();
+fn phenotypes_split<'a>(phenotypes: &Vec<&'a u64>, left_indices: &Vec<bool>, right_indices: &Vec<bool>) -> (Vec<&'a u64>, Vec<&'a u64>)  {
+    let mut left_phenotypes: Vec<&u64> = Vec::new();
+    let mut right_phenotypes: Vec<&u64> = Vec::new();
     let mut ind: usize = 0;
     for i in left_indices.iter().zip(right_indices.iter()) {
         if *i.0 {
@@ -211,7 +211,7 @@ fn min_gini(ginis: &Vec<f32>) -> usize {
     return min_i
 }
 
-pub fn calc_gini(p: &Vec<&u8>, g: &Vec<&u8>) -> f32 {
+pub fn calc_gini(p: &Vec<&u64>, g: &Vec<&u8>) -> f32 {
     /* 
     vector of genotypes (0,1,2) (g)
     vector of phenotypes (0,1) (p)

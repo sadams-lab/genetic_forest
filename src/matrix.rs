@@ -6,9 +6,10 @@ use rand::seq::SliceRandom;
 
 pub struct GenoMatrix {
     pub ids: Vec<String>,
-    pub phenotypes: Vec<u8>,
+    pub phenotypes: Vec<u64>,
     pub n_subjects: f64,
     pub n_genotypes: f64,
+    pheno_weight: f64, // weight to use for selecting phenotype (e.g. 0.5 would be balanced...)
     genotypes: CsMat<u8>
 }
 
@@ -21,7 +22,7 @@ impl GenoMatrix {
     
     pub fn new(path: &str, sep: &str) -> Self {
         let mut row_ids: Vec<String> = Vec::new();
-        let mut phenotypes: Vec<u8> = Vec::new();
+        let mut phenotypes: Vec<u64> = Vec::new();
         let mat_size: Shape = get_mat_size(path, sep);
         let mut geno_mat = TriMat::new(mat_size);
         let mut rdr = make_reader(path, sep);
@@ -30,7 +31,7 @@ impl GenoMatrix {
             let mut colnum = 2;
             let record = result.unwrap();
             row_ids.push(record[0].to_string());
-            phenotypes.push(record[1].parse::<u8>().unwrap());
+            phenotypes.push(record[1].parse::<u64>().unwrap());
             loop {
                 if colnum == mat_size.1 + 2 {
                     break
@@ -40,30 +41,49 @@ impl GenoMatrix {
             }
             rownum += 1
         }
+        let pheno_weight: f64 = phenotypes.iter().sum::<u64>() as f64 / mat_size.0 as f64;
         GenoMatrix{
             ids: row_ids, 
             phenotypes: phenotypes,
             n_subjects: mat_size.0 as f64,
             n_genotypes: mat_size.1 as f64,
             genotypes: geno_mat.to_csr(),
+            pheno_weight: pheno_weight
         }
     }
 
     pub fn make_slice(&self, n_vars: &f64, n_subj: &f64) -> GenoMatrixSlice {
-        // Note that these are all sampling without replacement
-        // We don't implement sampling with replacement for this
-        // Sampling with replacement improves predictive ability of the model
-        // Which we do not care about
+/*         Note that these are all sampling without replacement
+        We don't implement sampling with replacement for this
+        Sampling with replacement improves predictive ability of the model
+        Which we do not care about 
+        
+        Subject selection is auto-weighted for phenotype. 
+        Might consider adding an option to disable this or accept 
+        external weights (or just specify target ratio)*/
         let select_var_prob: f64 = n_vars / self.n_genotypes;
         let select_subj_prob: f64 = n_subj / self.n_subjects;
+        println!("{:?}", self.pheno_weight);
+        let prob_0 = self.pheno_weight * select_subj_prob;
+        let prob_1 = (1. - self.pheno_weight) * select_subj_prob;
+        println!("{:?}, {:?}", prob_0, prob_1);
         let mut subjs: Vec<usize> = Vec::new();
         let mut g_ids: Vec<usize> = Vec::new();
         let mut rng = thread_rng();
         for s in 0..self.n_subjects as usize {
-            if rng.gen_bool(select_subj_prob) {
-                subjs.push(s);
-
-            };
+            match self.phenotypes[s] {
+                0 => {
+                    if rng.gen_bool(prob_0) {
+                        subjs.push(s);
+                    }
+                },
+                1 => {
+                    if rng.gen_bool(prob_1) {
+                        subjs.push(s);
+                    }
+                },
+                _ => ()
+            }
         };
         for g in 0..self.n_genotypes as usize {
             if rng.gen_bool(select_var_prob) {
@@ -76,10 +96,10 @@ impl GenoMatrix {
         }
     }
     
-    pub fn get_slice_data(&self, gm: &GenoMatrixSlice) -> (Vec<&u8>, Vec<&u8>, Vec<Vec<&u8>>) {
+    pub fn get_slice_data(&self, gm: &GenoMatrixSlice) -> (Vec<&u64>, Vec<&u64>, Vec<Vec<&u8>>) {
         let mut rng = thread_rng();
         let mut g_vec: Vec<Vec<&u8>> = Vec::new();
-        let mut p_vec: Vec<&u8> = Vec::new();
+        let mut p_vec: Vec<&u64> = Vec::new();
         for s in &gm.subj_ids {
             p_vec.push(&self.phenotypes[*s]);
         };
@@ -90,7 +110,7 @@ impl GenoMatrix {
             }
             g_vec.push(gv);
         };
-        let mut pheno2: Vec<&u8> = p_vec.to_vec();
+        let mut pheno2: Vec<&u64> = p_vec.to_vec();
         pheno2.shuffle(&mut rng);
         return (p_vec, pheno2, g_vec)
     }
