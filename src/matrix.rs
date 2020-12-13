@@ -63,10 +63,8 @@ impl GenoMatrix {
         external weights (or just specify target ratio)*/
         let select_var_prob: f64 = n_vars / self.n_genotypes;
         let select_subj_prob: f64 = n_subj / self.n_subjects;
-        println!("{:?}", self.pheno_weight);
         let prob_0 = self.pheno_weight * select_subj_prob;
         let prob_1 = (1. - self.pheno_weight) * select_subj_prob;
-        println!("{:?}, {:?}", prob_0, prob_1);
         let mut subjs: Vec<usize> = Vec::new();
         let mut g_ids: Vec<usize> = Vec::new();
         let mut rng = thread_rng();
