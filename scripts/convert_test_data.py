@@ -24,6 +24,6 @@ with open(sys.argv[1] + ".vars", "w") as out_vars:
         out_vars.write(join_p(i) + "\n")
 
 
-with open(sys.argv[1] + ".txt", "w") as out_data:
+with open(sys.argv[1] + ".tsv", "w") as out_data:
     for i, p in pheno_lines.items():
         out_data.write(f"{i}\t{join_p(p)}\n")
