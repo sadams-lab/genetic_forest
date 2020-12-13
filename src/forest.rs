@@ -4,6 +4,7 @@
 use crate::tree;
 use crate::matrix;
 use rayon::prelude::*;
+use rayon::ThreadPoolBuilder;
 
 use std::collections::HashMap;
 
@@ -17,8 +18,13 @@ impl Forest {
     pub fn grow(gm: matrix::GenoMatrix, n_tree: i32, mtry: f64, min_node_size: i32, subj_fraction: f64, threads: usize) -> Self {
         let var_sample_size: f64 = mtry * gm.n_genotypes;
         let subj_sample_size: f64 = subj_fraction * gm.n_subjects;
+        let tp = ThreadPoolBuilder::new().num_threads(threads);
+        match tp.build_global() {
+            Ok(_) => eprintln!("Threads initialized successfully"),
+            Err(e) => panic!("Error in threads initialization: {}", e),
+        }
         let t: Vec<tree::Node> = (0..n_tree).into_par_iter()// Multithreaded piece, the tree building is recursive and can be independent
-        .map(|i| -> tree::Node {
+        .map(|_| -> tree::Node {
             make_tree(&gm, &var_sample_size, &subj_sample_size, &min_node_size)
         }).collect();
         Forest {trees: t}
