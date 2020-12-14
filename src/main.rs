@@ -45,8 +45,8 @@ fn main() {
         2 => reader::read_csv(&file_path, &"\t"),
         _ => panic!("Filetype not supported!"),
     };
-    let mut f = forest::Forest::grow(&data, n_tree, mtry, min_node_size, subj_fraction, threads);
     eprintln!("Growing forest 1 of {:?}.", n_iter);
+    let mut f = forest::Forest::grow(&data, n_tree, mtry, min_node_size, subj_fraction, threads);
     for n in 1..n_iter {
         eprintln!("Growing forest {:?} of {:?}.", n + 1, n_iter);
         let f_vars = f.pick_vars(var_cutoff);
