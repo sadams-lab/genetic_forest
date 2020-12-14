@@ -6,6 +6,7 @@ use crate::matrix;
 use rayon::prelude::*;
 use rayon::ThreadPoolBuilder;
 
+use std::io;
 use std::collections::HashMap;
 
 
@@ -25,34 +26,43 @@ impl Forest {
         }
         let t: Vec<tree::Node> = (0..n_tree).into_par_iter()// Multithreaded piece, the tree building is recursive and can be independent
         .map(|_| -> tree::Node {
-            make_tree(&gm, &var_sample_size, &subj_sample_size, &min_node_size)
+            match make_tree(&gm, &var_sample_size, &subj_sample_size, &min_node_size) {
+                Ok(tree) => return tree,
+                Err(_) => return tree::Node::empty_node(),
+            };
         }).collect();
         Forest {trees: t}
     }
 
-    pub fn re_grow(&mut self, gm: &matrix::GenoMatrix, n_tree: i32, mtry: f64, min_node_size: i32, subj_fraction: f64) {
+    pub fn re_grow(&mut self, gm: &matrix::GenoMatrix, n_tree: i32, mtry: f64, min_node_size: i32, subj_fraction: f64) -> Result<(), io::Error> {
         let var_sample_size: f64 = mtry * gm.n_genotypes;
         let subj_sample_size: f64 = subj_fraction * gm.n_subjects;
         let t: Vec<tree::Node> = (0..n_tree).into_par_iter()// Multithreaded piece, the tree building is recursive and can be independent
         .map(|_| -> tree::Node {
-            make_tree(&gm, &var_sample_size, &subj_sample_size, &min_node_size)
+            match make_tree(&gm, &var_sample_size, &subj_sample_size, &min_node_size) {
+                Ok(tree) => return tree,
+                Err(_) => return tree::Node::empty_node(),
+            };
         }).collect();
         self.trees = t;
+        Ok(())
     }
 
     fn importance(&self) -> HashMap<usize, Vec<f32>> {
         let mut tree_imps: HashMap<usize, Vec<f32>> = HashMap::new();
         for tree in &self.trees {
-            for (var, imp) in tree.get_importance() {
-                if tree_imps.contains_key(&var) {
-                    let n_imp = &mut imp.to_vec();
-                    let mut n_vec = tree_imps[&var].to_vec();
-                    n_vec.append(n_imp);
-                    tree_imps.remove(&var);
-                    tree_imps.insert(var, n_vec);
-                }
-                else {
-                    tree_imps.insert(var, imp);
+            if !tree.is_empty {
+                for (var, imp) in tree.get_importance() {
+                    if tree_imps.contains_key(&var) {
+                        let n_imp = &mut imp.to_vec();
+                        let mut n_vec = tree_imps[&var].to_vec();
+                        n_vec.append(n_imp);
+                        tree_imps.remove(&var);
+                        tree_imps.insert(var, n_vec);
+                    }
+                    else {
+                        tree_imps.insert(var, imp);
+                    }
                 }
             }
         };
@@ -92,9 +102,9 @@ impl Forest {
     }
 }
 
-fn make_tree(gm: &matrix::GenoMatrix, n_vars: &f64, n_subj: &f64, min_node_size: &i32) -> tree::Node {
+fn make_tree(gm: &matrix::GenoMatrix, n_vars: &f64, n_subj: &f64, min_node_size: &i32) -> Result<tree::Node, io::Error> {
     // Connection to the tree lib for making the decision trees
     let sample = gm.make_slice(n_vars, n_subj);
     let data = gm.get_slice_data(&sample);
-    tree::Node::grow(data, *min_node_size, sample)
+    Ok(tree::Node::grow(data, *min_node_size, sample))
 }

@@ -7,6 +7,7 @@ use std::collections::HashMap;
 #[derive(Default)]
 pub struct Node {
     pub gini: f32,
+    pub is_empty: bool,
     pub n: usize, // Number of subjects in tree
     pub neg: bool,
     pub var: usize,
@@ -20,6 +21,19 @@ impl Node {
     pub fn grow(data: (Vec<&u64>, Vec<&u64>, Vec<Vec<&u8>>), min_count: i32, ms: matrix::GenoMatrixSlice) -> Self {
         let node_n = data.0.len();
         return Node::new_node(data, &ms, &min_count, node_n);
+    }
+
+    pub fn empty_node() -> Self {
+        Node {
+            gini: 99.,
+            is_empty: true,
+            n: 0,
+            neg: true,
+            var: 0,
+            node_n: 0,
+            left: None,
+            right: None
+        }
     }
 
     pub fn print(&self, above: &usize, side: &str) {
@@ -99,9 +113,13 @@ impl Node {
         let new_genotypes = genotypes_split(&data.2, &left_indices, &right_indices);
         let new_phenotypes = phenotypes_split(&data.0, &left_indices, &right_indices);
         let new_phenotypes_2 = phenotypes_split(&data.1, &left_indices, &right_indices);
-        if sum_bool_vec(&left_indices) <= *min_count && sum_bool_vec(&right_indices) <= *min_count {
+        if new_phenotypes.0.len() == data.0.len() || new_phenotypes.1.len() == data.0.len() {
+            return Node::empty_node();
+        }
+        else if sum_bool_vec(&left_indices) <= *min_count && sum_bool_vec(&right_indices) <= *min_count {
             return Node {
                 gini: gini,
+                is_empty: false,
                 n: n,
                 neg: neg,
                 node_n: phenos.len(),
@@ -113,6 +131,7 @@ impl Node {
         else if sum_bool_vec(&left_indices) <= *min_count {
             return Node {
                 gini: gini,
+                is_empty: false,
                 n: n,
                 neg: neg,
                 node_n: phenos.len(),
@@ -125,6 +144,7 @@ impl Node {
         else if sum_bool_vec(&right_indices) <= *min_count {
             return Node {
                 gini: gini,
+                is_empty: false,
                 n: n,
                 neg: neg,
                 node_n: phenos.len(),
@@ -136,6 +156,7 @@ impl Node {
         }
         Node {
             gini: gini,
+            is_empty: false,
             n: n,
             neg: neg,
             node_n: phenos.len(),

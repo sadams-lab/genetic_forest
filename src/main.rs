@@ -48,10 +48,16 @@ fn main() {
     eprintln!("Growing forest 1 of {:?}.", n_iter);
     let mut f = forest::Forest::grow(&data, n_tree, mtry, min_node_size, subj_fraction, threads);
     for n in 1..n_iter {
-        eprintln!("Growing forest {:?} of {:?}.", n + 1, n_iter);
         let f_vars = f.mask_vars(var_cutoff);
+        eprintln!("Masking {:?} variants and growing forest {:?} of {:?}.", &f_vars.len(), n + 1, n_iter);
         &data.mask_vars(f_vars);
-        f.re_grow(&data, n_tree, mtry, min_node_size, subj_fraction);
+        match f.re_grow(&data, n_tree, mtry, min_node_size, subj_fraction) {
+            Ok(_) => (),
+            Err(err) => {
+                println!("Error in iteration {:?}: {}; breaking and returning results!", n, err);
+                break
+            }
+        }
     }
     f.print_var_importance();
 }
