@@ -59,6 +59,18 @@ impl Forest {
         tree_imps
     }
 
+    pub fn mask_vars(&self, cutoff: f32) -> Vec<usize> {
+        let mut vars: Vec<usize> = Vec::new();
+        let tree_imps = self.importance();
+        for (var, imp) in tree_imps {
+            let mean: f32 = imp.iter().sum::<f32>() / imp.len() as f32;
+            if mean < cutoff {
+                vars.push(var);
+            }
+        }
+        vars
+    }
+
     pub fn pick_vars(&self, cutoff: f32) -> Vec<usize> {
         let mut vars: Vec<usize> = Vec::new();
         let tree_imps = self.importance();

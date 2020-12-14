@@ -49,7 +49,7 @@ fn main() {
     let mut f = forest::Forest::grow(&data, n_tree, mtry, min_node_size, subj_fraction, threads);
     for n in 1..n_iter {
         eprintln!("Growing forest {:?} of {:?}.", n + 1, n_iter);
-        let f_vars = f.pick_vars(var_cutoff);
+        let f_vars = f.mask_vars(var_cutoff);
         &data.mask_vars(f_vars);
         f.re_grow(&data, n_tree, mtry, min_node_size, subj_fraction);
     }
