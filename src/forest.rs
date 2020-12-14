@@ -15,7 +15,7 @@ pub struct Forest {
 }
 
 impl Forest {
-    pub fn grow(gm: matrix::GenoMatrix, n_tree: i32, mtry: f64, min_node_size: i32, subj_fraction: f64, threads: usize) -> Self {
+    pub fn grow(gm: &matrix::GenoMatrix, n_tree: i32, mtry: f64, min_node_size: i32, subj_fraction: f64, threads: usize) -> Self {
         let var_sample_size: f64 = mtry * gm.n_genotypes;
         let subj_sample_size: f64 = subj_fraction * gm.n_subjects;
         let tp = ThreadPoolBuilder::new().num_threads(threads);
@@ -29,8 +29,18 @@ impl Forest {
         }).collect();
         Forest {trees: t}
     }
-    
-    pub fn var_importance(&self) {
+
+    pub fn re_grow(&mut self, gm: &matrix::GenoMatrix, n_tree: i32, mtry: f64, min_node_size: i32, subj_fraction: f64) {
+        let var_sample_size: f64 = mtry * gm.n_genotypes;
+        let subj_sample_size: f64 = subj_fraction * gm.n_subjects;
+        let t: Vec<tree::Node> = (0..n_tree).into_par_iter()// Multithreaded piece, the tree building is recursive and can be independent
+        .map(|_| -> tree::Node {
+            make_tree(&gm, &var_sample_size, &subj_sample_size, &min_node_size)
+        }).collect();
+        self.trees = t;
+    }
+
+    fn importance(&self) -> HashMap<usize, Vec<f32>> {
         let mut tree_imps: HashMap<usize, Vec<f32>> = HashMap::new();
         for tree in &self.trees {
             for (var, imp) in tree.get_importance() {
@@ -45,7 +55,24 @@ impl Forest {
                     tree_imps.insert(var, imp);
                 }
             }
+        };
+        tree_imps
+    }
+
+    pub fn pick_vars(&self, cutoff: f32) -> Vec<usize> {
+        let mut vars: Vec<usize> = Vec::new();
+        let tree_imps = self.importance();
+        for (var, imp) in tree_imps {
+            let mean: f32 = imp.iter().sum::<f32>() / imp.len() as f32;
+            if mean > cutoff {
+                vars.push(var);
+            }
         }
+        vars
+    }
+    
+    pub fn print_var_importance(&self) {
+        let tree_imps = self.importance();
         for (var, imp) in tree_imps {
             let mean: f32 = imp.iter().sum::<f32>() / imp.len() as f32;
             println!("{:?}\t{:?}", var, mean);

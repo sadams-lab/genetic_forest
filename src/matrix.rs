@@ -9,6 +9,8 @@ pub struct GenoMatrix {
     pub phenotypes: Vec<u64>,
     pub n_subjects: f64,
     pub n_genotypes: f64,
+    pub n_genotypes_minus_mask: f64,
+    var_mask: Vec<usize>,
     pheno_weight: f64, // weight to use for selecting phenotype (e.g. 0.5 would be balanced...)
     genotypes: CsMat<u8>
 }
@@ -47,6 +49,8 @@ impl GenoMatrix {
             phenotypes: phenotypes,
             n_subjects: mat_size.0 as f64,
             n_genotypes: mat_size.1 as f64,
+            n_genotypes_minus_mask: mat_size.1 as f64,
+            var_mask: Vec::new(),
             genotypes: geno_mat.to_csr(),
             pheno_weight: pheno_weight
         }
@@ -61,7 +65,7 @@ impl GenoMatrix {
         Subject selection is auto-weighted for phenotype. 
         Might consider adding an option to disable this or accept 
         external weights (or just specify target ratio)*/
-        let select_var_prob: f64 = n_vars / self.n_genotypes;
+        let select_var_prob: f64 = n_vars / self.n_genotypes_minus_mask;
         let select_subj_prob: f64 = n_subj / self.n_subjects;
         let prob_0 = self.pheno_weight * select_subj_prob;
         let prob_1 = (1. - self.pheno_weight) * select_subj_prob;
@@ -84,8 +88,13 @@ impl GenoMatrix {
             }
         };
         for g in 0..self.n_genotypes as usize {
-            if rng.gen_bool(select_var_prob) {
-                g_ids.push(g);
+            if self.var_mask.iter().any(|i| i == &g) {
+                (); // skip variants that are masked
+            } 
+            else {
+                if rng.gen_bool(select_var_prob) {
+                    g_ids.push(g);
+                };
             };
         };
         GenoMatrixSlice {
@@ -111,6 +120,15 @@ impl GenoMatrix {
         let mut pheno2: Vec<&u64> = p_vec.to_vec();
         pheno2.shuffle(&mut rng);
         return (p_vec, pheno2, g_vec)
+    }
+
+    pub fn mask_vars(&mut self, variants: Vec<usize>) {
+        // add variants to mask from analysis
+        // also adjust the number of variants
+        self.n_genotypes_minus_mask -= variants.len() as f64;
+        for v in variants {
+            self.var_mask.push(v);
+        }
     }
 }
 

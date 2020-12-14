@@ -13,6 +13,8 @@ fn main() {
     let mut mtry: f64 = 0.333;
     let mut min_node_size: i32 = 2;
     let mut subj_fraction: f64 = 0.666;
+    let mut n_iter: usize = 1; 
+    let mut var_cutoff: f32 = 0.;
     let mut threads: usize = 1;
     {
         let mut ap = ArgumentParser::new();
@@ -29,18 +31,29 @@ fn main() {
         .add_option(&["-o", "--min-node-size"], Store, "Minimum number of subjects in a node (surrogate for max-depth).");
         ap.refer(&mut subj_fraction)
         .add_option(&["-s", "--subject-fraction"], Store, "Fraction of subjects in each random sample.");
+        ap.refer(&mut n_iter)
+        .add_option(&["-r", "--iterations"], Store, "Number of iterations of the genetic algorithm.");
+        ap.refer(&mut var_cutoff)
+        .add_option(&["-c", "--cutoff"], Store, "Variant importance cutoff");
         ap.refer(&mut threads)
         .add_option(&["-t", "--threads"], Store, "Number of threads to use.");
         ap.parse_args_or_exit();
     }
     let filetype: u8 = input_file_type(&file_path);
-    let data = match filetype {
+    let mut data = match filetype {
         1 => reader::read_csv(&file_path, &","),
         2 => reader::read_csv(&file_path, &"\t"),
         _ => panic!("Filetype not supported!"),
     };
-    let f = forest::Forest::grow(data, n_tree, mtry, min_node_size, subj_fraction, threads);
-    f.var_importance();
+    let mut f = forest::Forest::grow(&data, n_tree, mtry, min_node_size, subj_fraction, threads);
+    eprintln!("Growing forest 1 of {:?}.", n_iter);
+    for n in 1..n_iter {
+        eprintln!("Growing forest {:?} of {:?}.", n + 1, n_iter);
+        let f_vars = f.pick_vars(var_cutoff);
+        &data.mask_vars(f_vars);
+        f.re_grow(&data, n_tree, mtry, min_node_size, subj_fraction);
+    }
+    f.print_var_importance();
 }
 
 fn input_file_type(filename: &str) -> u8 {
