@@ -25,7 +25,7 @@ impl Node {
 
     pub fn empty_node() -> Self {
         Node {
-            gini: 99.,
+            gini: std::f32::NAN,
             is_empty: true,
             n: 0,
             neg: true,
@@ -88,6 +88,7 @@ impl Node {
     }
 
     fn new_node(data: (Vec<&u64>, Vec<&u64>, Vec<Vec<&u8>>), ms: &matrix::GenoMatrixSlice, min_count: &i32, n: usize) -> Node {
+        //todo: clean this mess up
         let mut ginis: Vec<f32> = Vec::new();
         let phenos = &data.0;
         let phenos2 = &data.1;
@@ -101,6 +102,9 @@ impl Node {
                 ginis.push(-1. * gini2);
             }
         };
+        if ginis.len() == 0 {
+            return Node::empty_node(); 
+        }
         let min_gini_index: usize = min_gini(&ginis);
         let mut gini = ginis[min_gini_index];
         let mut neg: bool = false;
@@ -114,7 +118,7 @@ impl Node {
         let new_phenotypes = phenotypes_split(&data.0, &left_indices, &right_indices);
         let new_phenotypes_2 = phenotypes_split(&data.1, &left_indices, &right_indices);
         if new_phenotypes.0.len() == data.0.len() || new_phenotypes.1.len() == data.0.len() {
-            return Node::empty_node();
+            return Node::empty_node(); // this is intended to catch infinite loops...
         }
         else if sum_bool_vec(&left_indices) <= *min_count && sum_bool_vec(&right_indices) <= *min_count {
             return Node {

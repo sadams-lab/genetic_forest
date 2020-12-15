@@ -2,6 +2,7 @@ pub mod reader;
 pub mod matrix;
 pub mod tree;
 pub mod forest;
+mod threads;
 
 use argparse::{ArgumentParser, StoreTrue, Store};
 
@@ -45,13 +46,22 @@ fn main() {
         2 => reader::read_csv(&file_path, &"\t"),
         _ => panic!("Filetype not supported!"),
     };
+    threads::make_thread_pool(threads);
     eprintln!("Growing forest 1 of {:?}.", n_iter);
-    let mut f = forest::Forest::grow(&data, n_tree, mtry, min_node_size, subj_fraction, threads);
+    let hp = forest::HyperParameters::set(n_tree, mtry, min_node_size, subj_fraction);
+    let mut f = forest::Forest::new(hp);
+    match f.grow(&data) {
+        Ok(_) => (),
+        Err(err) => {
+            println!("Error in initial forest growth: {}. Quitting now!", err);
+            std::process::exit(1);
+        }
+    }
     for n in 1..n_iter {
         let f_vars = f.mask_vars(var_cutoff);
         eprintln!("Masking {:?} variants and growing forest {:?} of {:?}.", &f_vars.len(), n + 1, n_iter);
         &data.mask_vars(f_vars);
-        match f.re_grow(&data, n_tree, mtry, min_node_size, subj_fraction) {
+        match f.grow(&data) {
             Ok(_) => (),
             Err(err) => {
                 println!("Error in iteration {:?}: {}; breaking and returning results!", n, err);
@@ -59,7 +69,7 @@ fn main() {
             }
         }
     }
-    f.print_var_importance();
+    f.print_var_importance()
 }
 
 fn input_file_type(filename: &str) -> u8 {

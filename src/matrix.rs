@@ -56,7 +56,7 @@ impl GenoMatrix {
         }
     }
 
-    pub fn make_slice(&self, n_vars: &f64, n_subj: &f64) -> GenoMatrixSlice {
+    pub fn make_slice(&self, var_frac: f64, subj_frac: f64) -> GenoMatrixSlice {
 /*         Note that these are all sampling without replacement
         We don't implement sampling with replacement for this
         Sampling with replacement improves predictive ability of the model
@@ -65,10 +65,9 @@ impl GenoMatrix {
         Subject selection is auto-weighted for phenotype. 
         Might consider adding an option to disable this or accept 
         external weights (or just specify target ratio)*/
-        let select_var_prob: f64 = n_vars / self.n_genotypes_minus_mask;
-        let select_subj_prob: f64 = n_subj / self.n_subjects;
-        let prob_0 = self.pheno_weight * select_subj_prob;
-        let prob_1 = (1. - self.pheno_weight) * select_subj_prob;
+
+        let prob_0 = self.pheno_weight * subj_frac;
+        let prob_1 = (1. - self.pheno_weight) * subj_frac;
         let mut subjs: Vec<usize> = Vec::new();
         let mut g_ids: Vec<usize> = Vec::new();
         let mut rng = thread_rng();
@@ -92,7 +91,7 @@ impl GenoMatrix {
                 (); // skip variants that are masked
             } 
             else {
-                if rng.gen_bool(select_var_prob) {
+                if rng.gen_bool(var_frac) {
                     g_ids.push(g);
                 };
             };
