@@ -20,7 +20,7 @@ impl Node {
 
     pub fn grow(data: (Vec<&u64>, Vec<&u64>, Vec<Vec<&u8>>), min_count: i32, ms: matrix::GenoMatrixSlice) -> Self {
         let node_n = data.0.len();
-        return Node::new_node(data, &ms, &min_count, node_n);
+        return Node::new_node(data, &ms, &min_count, node_n, 1.);
     }
 
     pub fn empty_node() -> Self {
@@ -51,11 +51,11 @@ impl Node {
     pub fn get_importance(&self) -> HashMap<usize, Vec<f32>> {
         let mut var_imp: HashMap<usize, Vec<f32>> = HashMap::new();
         fn imp(n: &Node, vi: &mut HashMap<usize, Vec<f32>>) {
-            let mut importance: f32 = (n.node_n as f32 / n.n as f32) * (1. / n.gini);
+            let mut importance: f32 = (n.node_n as f32 / n.n as f32) * (n.gini);
             match &n.left {
                 Some(nl) => {
                     if &nl.gini > &0. {
-                        importance -= (&nl.node_n / n.n) as f32 * (1. / &nl.gini);
+                        importance -= (&nl.node_n / n.n) as f32 * (&nl.gini);
                         imp(&nl, vi);
                     }
                 },
@@ -64,13 +64,15 @@ impl Node {
             match &n.right {
                 Some(nr) => {
                     if &nr.gini > &0. {
-                        importance -= (&nr.node_n / n.n) as f32 * (1. / &nr.gini);
+                        importance -= (&nr.node_n / n.n) as f32 * (&nr.gini);
                         imp(&nr, vi);
                     }
                 },
                 None => ()
             };
             if n.neg {
+                // was this calculated based on shuffled subjects?
+                // If so, it is a negative contribution
                 importance = importance * -1.;
             }
             if vi.contains_key(&n.var) {
@@ -87,14 +89,14 @@ impl Node {
         return var_imp
     }
 
-    fn new_node(data: (Vec<&u64>, Vec<&u64>, Vec<Vec<&u8>>), ms: &matrix::GenoMatrixSlice, min_count: &i32, n: usize) -> Node {
+    fn new_node(data: (Vec<&u64>, Vec<&u64>, Vec<Vec<&u8>>), ms: &matrix::GenoMatrixSlice, min_count: &i32, n: usize, parent_gini: f32) -> Node {
         //todo: clean this mess up
         let mut ginis: Vec<f32> = Vec::new();
         let phenos = &data.0;
         let phenos2 = &data.1;
         for k in &data.2 {
-            let gini = calc_gini(phenos, k);
-            let gini2 = calc_gini(phenos2, k);
+            let gini = calc_gini(phenos, k, &parent_gini);
+            let gini2 = calc_gini(phenos2, k, &parent_gini);
             if gini < gini2 {
                 ginis.push(gini);
             }
@@ -141,7 +143,7 @@ impl Node {
                 node_n: phenos.len(),
                 var: ms.genotype_ids[min_gini_index],
                 left: None,
-                right: Some(Box::new(Node::new_node((new_phenotypes.1, new_phenotypes_2.1, new_genotypes.1), ms, min_count, n)))
+                right: Some(Box::new(Node::new_node((new_phenotypes.1, new_phenotypes_2.1, new_genotypes.1), ms, min_count, n, gini)))
             };
     
         }
@@ -153,7 +155,7 @@ impl Node {
                 neg: neg,
                 node_n: phenos.len(),
                 var: ms.genotype_ids[min_gini_index],
-                left: Some(Box::new(Node::new_node((new_phenotypes.0, new_phenotypes_2.0, new_genotypes.0), ms, min_count, n))),
+                left: Some(Box::new(Node::new_node((new_phenotypes.0, new_phenotypes_2.0, new_genotypes.0), ms, min_count, n, gini))),
                 right: None
             };
             
@@ -165,8 +167,8 @@ impl Node {
             neg: neg,
             node_n: phenos.len(),
             var: ms.genotype_ids[min_gini_index],
-            left: Some(Box::new(Node::new_node((new_phenotypes.0, new_phenotypes_2.0, new_genotypes.0), ms, min_count, n))),
-            right: Some(Box::new(Node::new_node((new_phenotypes.1, new_phenotypes_2.1, new_genotypes.1), ms, min_count, n)))
+            left: Some(Box::new(Node::new_node((new_phenotypes.0, new_phenotypes_2.0, new_genotypes.0), ms, min_count, n, gini))),
+            right: Some(Box::new(Node::new_node((new_phenotypes.1, new_phenotypes_2.1, new_genotypes.1), ms, min_count, n, gini)))
         }
     }
 }
@@ -236,7 +238,7 @@ fn min_gini(ginis: &Vec<f32>) -> usize {
     return min_i
 }
 
-pub fn calc_gini(p: &Vec<&u64>, g: &Vec<&u8>) -> f32 {
+pub fn calc_gini(p: &Vec<&u64>, g: &Vec<&u8>, parent_gini: &f32) -> f32 {
     /* 
     vector of genotypes (0,1,2) (g)
     vector of phenotypes (0,1) (p)
@@ -269,8 +271,8 @@ pub fn calc_gini(p: &Vec<&u64>, g: &Vec<&u8>) -> f32 {
 
     let p_inst: f32 = p.len() as f32;
 
-    let g0_g = 1. - (p0g0 / (p0g0+p1g0)).powf(pi) - (p1g0 / (p0g0+p1g0)).powf(pi);
-    let g1_g = 1. - (p0g1 / (p0g1+p1g1)).powf(pi) - (p1g1 / (p0g1+p1g1)).powf(pi);
+    let g0_g = parent_gini - (p0g0 / (p0g0+p1g0)).powf(pi) - (p1g0 / (p0g0+p1g0)).powf(pi);
+    let g1_g = parent_gini - (p0g1 / (p0g1+p1g1)).powf(pi) - (p1g1 / (p0g1+p1g1)).powf(pi);
 
     let gi = (((p0g0+p1g0)/p_inst) * g0_g) + (((p0g1+p1g1)/p_inst) * g1_g);
     if f32::is_nan(gi) {
