@@ -3,8 +3,6 @@
 use crate::matrix;
 
 use std::collections::HashMap;
-
-#[derive(Default)]
 pub struct Node {
     pub gini: f32,
     pub is_empty: bool,

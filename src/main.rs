@@ -1,8 +1,11 @@
+// Copyright 2020 Solomon M. Adams, PharmD, PhD
+// Licensed under the MIT license
+
 pub mod reader;
 pub mod matrix;
 pub mod tree;
 pub mod forest;
-mod threads;
+mod utils;
 
 use argparse::{ArgumentParser, StoreTrue, Store};
 
@@ -46,9 +49,14 @@ fn main() {
         2 => reader::read_csv(&file_path, &"\t"),
         _ => panic!("Filetype not supported!"),
     };
-    threads::make_thread_pool(threads);
+    utils::make_thread_pool(threads);
     eprintln!("Growing forest 1 of {:?}.", n_iter);
-    let hp = forest::HyperParameters::set(n_tree, mtry, min_node_size, subj_fraction);
+    let hp = forest::HyperParameters {
+        n_tree: n_tree, 
+        mtry: mtry, 
+        min_node_size: min_node_size, 
+        subj_fraction: subj_fraction
+    };
     let mut f = forest::Forest::new(hp);
     match f.grow(&data) {
         Ok(_) => (),

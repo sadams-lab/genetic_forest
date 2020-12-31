@@ -1,4 +1,7 @@
-// Builds and analyzes random forest
+// Copyright 2020 Solomon M. Adams, PharmD, PhD
+// Licensed under the MIT license
+
+//! Random Forest Algorithm
 
 use crate::tree;
 use crate::matrix;
@@ -8,27 +11,16 @@ use rayon::prelude::*;
 use std::io;
 use std::collections::HashMap;
 
+/// Hyperparameters
 pub struct HyperParameters {
-    n_tree: i32,
-    mtry: f64,
-    min_node_size: i32,
-    subj_fraction: f64
+    pub n_tree: i32,
+    pub mtry: f64,
+    pub min_node_size: i32,
+    pub subj_fraction: f64
 }
 pub struct Forest {
     hyperparameters: HyperParameters,
     pub trees: Option<Vec<tree::Node>>
-}
-
-impl HyperParameters {
-
-    pub fn set(n_tree: i32, mtry: f64, min_node_size: i32, subj_fraction: f64) -> Self {
-        HyperParameters {
-            n_tree: n_tree,
-            mtry: mtry,
-            min_node_size: min_node_size,
-            subj_fraction: subj_fraction
-        }
-    }
 }
 
 impl Forest {

@@ -1,5 +1,2 @@
-// Genetic algorithm for the optiimization of a standard forest
+// Genetic algorithm for the optimization of a standard forest
 
-pub struct Variants {
-    
-}

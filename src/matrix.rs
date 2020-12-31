@@ -57,7 +57,7 @@ impl GenoMatrix {
     }
 
     pub fn make_slice(&self, var_frac: f64, subj_frac: f64) -> GenoMatrixSlice {
-/*         Note that these are all sampling without replacement
+/*      Note that these are all sampling without replacement
         We don't implement sampling with replacement for this
         Sampling with replacement improves predictive ability of the model
         Which we do not care about 
