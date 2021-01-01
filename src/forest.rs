@@ -6,6 +6,7 @@
 
 use crate::tree;
 use crate::matrix;
+use crate::variants;
 
 use rayon::prelude::*;
 
@@ -20,7 +21,7 @@ use std::collections::HashMap;
 pub struct HyperParameters {
     pub n_tree: i32,
     pub mtry: f64,
-    pub min_node_size: i32,
+    pub max_depth: i32,
     pub subj_fraction: f64
 }
 
@@ -97,11 +98,11 @@ impl Forest {
     }
     
     /// print the variant + importance to stdout
-    pub fn print_var_importance(&self) {
+    pub fn print_var_importance(&self, variants: &Vec<variants::Variant>) {
         let tree_imps = self.importance();
         for (var, imp) in tree_imps {
             let mean: f32 = imp.iter().sum::<f32>() / imp.len() as f32;
-            println!("{:?}\t{:?}", var, mean);
+            println!("{:?}\t{:?}", variants[var].id, mean);
         }
     }
 }
@@ -119,5 +120,5 @@ fn make_tree(gm: &matrix::GenoMatrix, hp: &HyperParameters) -> Result<tree::Node
         phenos_shuffle: data.1,
         genos: data.2
     };
-    Ok(tree::Node::grow(tree_data, hp.min_node_size, sample))
+    Ok(tree::Node::grow(tree_data, hp.max_depth, sample))
 }

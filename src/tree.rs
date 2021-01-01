@@ -36,9 +36,10 @@ pub struct NodeData<'a> {
 impl Node {
 
     /// The function that creates a tree
-    pub fn grow(node_data: NodeData, min_count: i32, ms: matrix::GenoMatrixSlice) -> Self {
+    pub fn grow(node_data: NodeData, max_depth: i32, ms: matrix::GenoMatrixSlice) -> Self {
+        let depth: i32 = 0;
         let node_n = node_data.phenos.len();
-        return Node::new_node(&node_data, &ms, &min_count, node_n, 1.);
+        return Node::new_node(&node_data, &ms, &max_depth, &depth, node_n, 1.);
     }
 
     /// An empty node, called internally to allow for terminal nodes that stop growth
@@ -116,7 +117,8 @@ impl Node {
 
     /// Recursive function for building the tree
     /// Kicked off when a new tree is created
-    fn new_node(node_data: &NodeData, ms: &matrix::GenoMatrixSlice, min_count: &i32, n: usize, parent_gini: f32) -> Node {
+    fn new_node(node_data: &NodeData, ms: &matrix::GenoMatrixSlice, max_depth: &i32, depth: &i32, n: usize, parent_gini: f32) -> Node {
+        let new_depth = depth + 1;
         let mut ginis: Vec<f32> = Vec::new(); // Vector of per-genotype ginis
         for k in &node_data.genos {
             // Each genotype vector has gini calculated based on the actual phenos (gini1)
@@ -146,11 +148,7 @@ impl Node {
         let left_indices: &Vec<bool> = &node_data.genos[min_gini_index].iter().map(|r| **r==0).collect();
         let right_indices: &Vec<bool> = &node_data.genos[min_gini_index].iter().map(|r| **r==1).collect();
         let new_node_data = &node_data.split(&left_indices, &right_indices);
-
-        if new_node_data.0.phenos.len() == node_data.genos.len() || new_node_data.1.phenos.len() == node_data.phenos.len() {
-            return Node::empty_node(); // this is intended to catch infinite loops...
-        }
-        else if utils::sum_bool_vec(&left_indices) <= *min_count && utils::sum_bool_vec(&right_indices) <= *min_count {
+        if depth > max_depth {
             return Node {
                 gini: gini,
                 is_empty: false,
@@ -161,32 +159,6 @@ impl Node {
                 left: None,
                 right: None
             };
-        }
-        else if utils::sum_bool_vec(&left_indices) <= *min_count {
-            return Node {
-                gini: gini,
-                is_empty: false,
-                n: n,
-                neg: neg,
-                node_n: node_data.phenos.len(),
-                var: ms.genotype_ids[min_gini_index],
-                left: None,
-                right: Some(Box::new(Node::new_node(&new_node_data.1, ms, min_count, n, gini)))
-            };
-    
-        }
-        else if utils::sum_bool_vec(&right_indices) <= *min_count {
-            return Node {
-                gini: gini,
-                is_empty: false,
-                n: n,
-                neg: neg,
-                node_n: node_data.phenos.len(),
-                var: ms.genotype_ids[min_gini_index],
-                left: Some(Box::new(Node::new_node(&new_node_data.0, ms, min_count, n, gini))),
-                right: None
-            };
-            
         }
         Node {
             gini: gini,
@@ -195,8 +167,8 @@ impl Node {
             neg: neg,
             node_n: node_data.phenos.len(),
             var: ms.genotype_ids[min_gini_index],
-            left: Some(Box::new(Node::new_node(&new_node_data.0, ms, min_count, n, gini))),
-            right: Some(Box::new(Node::new_node(&new_node_data.1, ms, min_count, n, gini)))
+            left: Some(Box::new(Node::new_node(&new_node_data.0, ms, max_depth, &new_depth, n, gini))),
+            right: Some(Box::new(Node::new_node(&new_node_data.1, ms, max_depth, &new_depth, n, gini)))
         }
     }
 }

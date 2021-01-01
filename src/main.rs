@@ -14,9 +14,10 @@ use argparse::{ArgumentParser, StoreTrue, Store};
 fn main() {
     let mut verbose: bool = false;
     let mut file_path: String = "".to_string();
+    let mut variant_file_path: String = "".to_string();
     let mut n_tree: i32 = 10;
     let mut mtry: f64 = 0.333;
-    let mut min_node_size: i32 = 2;
+    let mut max_depth: i32 = 5;
     let mut subj_fraction: f64 = 0.666;
     let mut n_iter: usize = 1; 
     let mut var_cutoff: f32 = 0.;
@@ -28,11 +29,13 @@ fn main() {
         .add_option(&["-v", "--verbose"], StoreTrue,"Provide more verbose output");
         ap.refer(&mut file_path)
         .add_option(&["-f", "--file-path"], Store, "Path to input file.");
+        ap.refer(&mut variant_file_path)
+        .add_option(&["-x", "--variant-file-path"], Store, "Path to file with variant IDs");
         ap.refer(&mut n_tree)
         .add_option(&["-u", "--num-tree"], Store, "Number of trees to train.");
         ap.refer(&mut mtry)
         .add_option(&["-y", "--mtry-fraction"], Store, "MTRY fraction.");
-        ap.refer(&mut min_node_size)
+        ap.refer(&mut max_depth)
         .add_option(&["-o", "--min-node-size"], Store, "Minimum number of subjects in a node (surrogate for max-depth).");
         ap.refer(&mut subj_fraction)
         .add_option(&["-s", "--subject-fraction"], Store, "Fraction of subjects in each random sample.");
@@ -50,12 +53,17 @@ fn main() {
         2 => reader::read_matrix_csv(&file_path, &"\t"),
         _ => panic!("Filetype not supported!"),
     };
+    let variants = match filetype {
+        1 => reader::read_variant_table(&variant_file_path, &","),
+        2 => reader::read_variant_table(&variant_file_path, &"\t"),
+        _ => panic!("Filetype not supported!"),
+    };
     utils::make_thread_pool(threads);
     eprintln!("Growing forest 1 of {:?}.", n_iter);
     let hp = forest::HyperParameters {
         n_tree: n_tree, 
         mtry: mtry, 
-        min_node_size: min_node_size, 
+        max_depth: max_depth, 
         subj_fraction: subj_fraction
     };
     let mut f = forest::Forest::new(hp);
@@ -78,7 +86,7 @@ fn main() {
             }
         }
     }
-    f.print_var_importance()
+    f.print_var_importance(&variants);
 }
 
 /// Determine input filetype based on suffix

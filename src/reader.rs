@@ -1,6 +1,7 @@
-// simplest use case
-// expects a csv file
-// ID,PHENO,COV1,COV2,COV3
+// Copyright 2020 Solomon M. Adams, PharmD, PhD
+// Licensed under the MIT license
+
+//! Functions related to file reading
 
 use crate::matrix;
 use crate::variants;
