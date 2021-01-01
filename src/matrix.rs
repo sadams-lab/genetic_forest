@@ -1,8 +1,7 @@
-use std::fs::File;
-use std::str;
 use sprs::{CsMat, Shape, TriMat};
 use rand::{Rng, thread_rng};
 use rand::seq::SliceRandom;
+use std::fs::File;
 
 pub struct GenoMatrix {
     pub ids: Vec<String>,
@@ -22,12 +21,10 @@ pub struct GenoMatrixSlice {
 
 impl GenoMatrix {
     
-    pub fn new(path: &str, sep: &str) -> Self {
+    pub fn new(rdr: &mut csv::Reader<File>, mat_size: Shape) -> Self {
         let mut row_ids: Vec<String> = Vec::new();
         let mut phenotypes: Vec<u64> = Vec::new();
-        let mat_size: Shape = get_mat_size(path, sep);
         let mut geno_mat = TriMat::new(mat_size);
-        let mut rdr = make_reader(path, sep);
         let mut rownum = 0;
         for result in rdr.records() {
             let mut colnum = 2;
@@ -57,14 +54,13 @@ impl GenoMatrix {
     }
 
     pub fn make_slice(&self, var_frac: f64, subj_frac: f64) -> GenoMatrixSlice {
-/*      Note that these are all sampling without replacement
-        We don't implement sampling with replacement for this
-        Sampling with replacement improves predictive ability of the model
-        Which we do not care about 
-        
-        Subject selection is auto-weighted for phenotype. 
-        Might consider adding an option to disable this or accept 
-        external weights (or just specify target ratio)*/
+    //  Note that these are all sampling without replacement
+    //  We don't implement sampling with replacement for this
+    //  Sampling with replacement improves predictive ability of the model
+    //  Which we do not care about.
+    //  Subject selection is auto-weighted for phenotype. 
+    //  Might consider adding an option to disable this or accept 
+    //  external weights (or just specify target ratio)
 
         let prob_0 = self.pheno_weight * subj_frac;
         let prob_1 = (1. - self.pheno_weight) * subj_frac;
@@ -129,30 +125,4 @@ impl GenoMatrix {
             self.var_mask.push(v);
         }
     }
-}
-
-fn make_reader(path: &str, sep: &str) -> csv::Reader<File> {
-    let file = match File::open(path) {
-        Ok(f) => f,
-        Err(why) => panic!("Something happened with the file: {}", why),
-    };
-    return csv::ReaderBuilder::new()
-        .has_headers(true)
-        .delimiter(sep.as_bytes()[0])
-        .comment(Some(b'#'))
-        .from_reader(file);
-}
-
-fn get_mat_size(path: &str, sep: &str) -> Shape {
-    let mut ncols: usize = 0;
-    let mut nrows: usize = 0;
-    let mut rdr = make_reader(path, sep);
-    for result in rdr.byte_records() {
-            let record = result.unwrap();
-            if ncols == 0 {
-                ncols = &record.len() - 2;
-            };
-            nrows += 1;
-    }
-    (nrows, ncols)
 }

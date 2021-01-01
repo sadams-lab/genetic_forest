@@ -5,7 +5,8 @@ pub mod reader;
 pub mod matrix;
 pub mod tree;
 pub mod forest;
-mod utils;
+pub mod utils;
+pub mod variants;
 
 use argparse::{ArgumentParser, StoreTrue, Store};
 
@@ -45,8 +46,8 @@ fn main() {
     }
     let filetype: u8 = input_file_type(&file_path);
     let mut data = match filetype {
-        1 => reader::read_csv(&file_path, &","),
-        2 => reader::read_csv(&file_path, &"\t"),
+        1 => reader::read_matrix_csv(&file_path, &","),
+        2 => reader::read_matrix_csv(&file_path, &"\t"),
         _ => panic!("Filetype not supported!"),
     };
     utils::make_thread_pool(threads);
@@ -80,9 +81,8 @@ fn main() {
     f.print_var_importance()
 }
 
+/// Determine input filetype based on suffix
 fn input_file_type(filename: &str) -> u8 {
-    // Determine if filetype is csv, tsv, or gz
-    // TODO: add support for gz files
     let file_split: Vec<_> = filename.split(".").map(|s| s).collect();
     let suffix = file_split[file_split.len() - 1];
     match suffix {

@@ -1,6 +1,9 @@
 //! Miscellaneious utilities shared throughout the genetic forest module
 
 use rayon::ThreadPoolBuilder;
+use sprs::Shape;
+
+use std::fs::File;
 
 /// Initialize the global thread pool, only needs to be called once per program run
 /// No return, just needs to be called with an argument corresponding to the number of threads
@@ -41,4 +44,19 @@ pub fn get_min_index(vals: &Vec<f32>) -> usize {
         i += 1;
     }
     return min_i
+}
+
+/// Get the size of a reader object
+/// In number of lines
+pub fn get_mat_size(rdr: &mut csv::Reader<File>) -> Shape {
+    let mut ncols: usize = 0;
+    let mut nrows: usize = 0;
+    for result in rdr.byte_records() {
+            let record = result.unwrap();
+            if ncols == 0 {
+                ncols = &record.len() - 2;
+            };
+            nrows += 1;
+    }
+    (nrows, ncols)
 }
