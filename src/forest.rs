@@ -2,6 +2,7 @@
 // Licensed under the MIT license
 
 //! Random Forest Algorithm
+//! Manages the creation and organization of decision trees
 
 use crate::tree;
 use crate::matrix;
@@ -12,12 +13,17 @@ use std::io;
 use std::collections::HashMap;
 
 /// Hyperparameters
+/// n_tree = number of trees
+/// mtry = fraction of variants to be selected for each tree
+/// min_node_size = minimum number of samples in a node to be considered for a split
+/// subj_fraction = fraction of subjects to be selected for each tree
 pub struct HyperParameters {
     pub n_tree: i32,
     pub mtry: f64,
     pub min_node_size: i32,
     pub subj_fraction: f64
 }
+
 pub struct Forest {
     hyperparameters: HyperParameters,
     pub trees: Option<Vec<tree::Node>>
@@ -90,6 +96,7 @@ impl Forest {
         vars
     }
     
+    /// print the variant + importance to stdout
     pub fn print_var_importance(&self) {
         let tree_imps = self.importance();
         for (var, imp) in tree_imps {
@@ -99,9 +106,18 @@ impl Forest {
     }
 }
 
+
+
+/// Connection to the tree lib for making the decision trees
+/// Outside of impl block since it is 'kind of' an independent operator
+/// that spawns / returns the tree
 fn make_tree(gm: &matrix::GenoMatrix, hp: &HyperParameters) -> Result<tree::Node, io::Error> {
-    // Connection to the tree lib for making the decision trees
     let sample = gm.make_slice(hp.mtry, hp.subj_fraction);
     let data = gm.get_slice_data(&sample);
-    Ok(tree::Node::grow(data, hp.min_node_size, sample))
+    let tree_data = tree::NodeData {
+        phenos: data.0,
+        phenos_shuffle: data.1,
+        genos: data.2
+    };
+    Ok(tree::Node::grow(tree_data, hp.min_node_size, sample))
 }
