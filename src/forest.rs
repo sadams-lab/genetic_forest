@@ -40,6 +40,19 @@ impl Forest {
         }
     }
 
+    /// Get variants that were used in the forest
+    /// sorted and deduplicated
+    pub fn get_vars(&self) -> Vec<usize> {
+        let mut vars: Vec<usize> = Vec::new();
+        let tree_imps = self.importance();
+        for (var, _) in tree_imps {
+            vars.push(var);
+        }
+        vars.sort();
+        vars.dedup();
+        vars
+    }
+
     pub fn grow(&mut self, gm: &matrix::GenoMatrix) -> Result<(), io::Error> {
         let t: Vec<tree::Node> = (0..self.hyperparameters.n_tree).into_par_iter()
         .map(|_| -> tree::Node {
