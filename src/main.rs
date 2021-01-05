@@ -36,7 +36,7 @@ fn main() {
         ap.refer(&mut mtry)
         .add_option(&["-y", "--mtry-fraction"], Store, "MTRY fraction.");
         ap.refer(&mut max_depth)
-        .add_option(&["-o", "--min-node-size"], Store, "Minimum number of subjects in a node (surrogate for max-depth).");
+        .add_option(&["-o", "--max-depth"], Store, "Minimum number of subjects in a node (surrogate for max-depth).");
         ap.refer(&mut subj_fraction)
         .add_option(&["-s", "--subject-fraction"], Store, "Fraction of subjects in each random sample.");
         ap.refer(&mut n_iter)
