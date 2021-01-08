@@ -1,29 +1,30 @@
 import sys
 
-from pysam import VariantFile
-
 def join_p(p):
     return "\t".join(p)
 
-vcf_data = VariantFile(sys.argv[1])
-with open(sys.argv[2], "r") as pheno_in:
-    pheno_in.readline()
-    pheno_lines = {l.strip().split("\t")[0]: [l.strip().split("\t")[1]] for l in pheno_in.readlines()}
+def joinvar(v):
+    if int(v) == 2:
+        return "1"
+    else:
+        return v
 
-variants = []
-index = 0
-for record in vcf_data.fetch():
-    variants.append((str(index), record.id))
-    for i, p in pheno_lines.items():
-        rec = sum(record.samples[i]["GT"])
-        p.append(str(rec) if rec <= 1 else "1")
-    index += 1
+with open(sys.argv[2], "r") as phenos:
+    phenos = [p.strip().split("\t")[1] for p in phenos.readlines()]
+
+with open(sys.argv[1], "r") as in_data:
+    variants = in_data.readline().strip().split("\t")[6:]
+    lines = in_data.readlines()
+    with open(sys.argv[1] + ".tsv", "w") as out_data:
+        i = 1
+        for l in lines:
+            nl = [str(i), phenos[i]] + [joinvar(v) for v in l.strip().split("\t")[6:]]
+            out_data.write("\t".join(nl) + "\n")
+            i += 1
 
 with open(sys.argv[1] + ".vars", "w") as out_vars:
-    for i in variants:
-        out_vars.write(join_p(i) + "\n")
+    i = 0
+    for v in variants:
+        out_vars.write(f"{str(i)}\t{v}\n")
+        i += 1
 
-
-with open(sys.argv[1] + ".tsv", "w") as out_data:
-    for i, p in pheno_lines.items():
-        out_data.write(f"{i}\t{join_p(p)}\n")
