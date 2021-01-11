@@ -83,7 +83,7 @@ impl GenoMatrix {
             }
         };
         for g in 0..self.n_genotypes as usize {
-            if self.var_mask.iter().any(|i| i == &g) {
+            if self.var_mask.iter().any(|i| i == &g) { // This is brute force over every variant for n_genotypes, which is slow
                 (); // skip variants that are masked
             } 
             else {
