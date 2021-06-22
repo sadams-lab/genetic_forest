@@ -54,8 +54,8 @@ fn main() {
         _ => panic!("Filetype not supported!"),
     };
     let variants = match filetype {
-        1 => reader::read_variant_table(&variant_file_path, &","),
-        2 => reader::read_variant_table(&variant_file_path, &"\t"),
+        1 => reader::read_variant_table(&variant_file_path, &",", &data.n_genotypes),
+        2 => reader::read_variant_table(&variant_file_path, &"\t", &data.n_genotypes),
         _ => panic!("Filetype not supported!"),
     };
     utils::make_thread_pool(threads);
