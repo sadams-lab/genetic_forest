@@ -1,7 +1,7 @@
 // Copyright 2020 Solomon M. Adams, PharmD, PhD
 // Licensed under the MIT license
 
-//! Functions related to file reading
+//! Functions related to file reading and writing
 
 use crate::matrix;
 use crate::variants;
@@ -33,6 +33,7 @@ pub fn read_variant_table(path: &str, sep: &str, n_genotypes: &f64) -> Vec<varia
     };
     variants
 }
+
 
 fn build_dummy_variant_array(variants: &mut Vec<variants::Variant>, n_genotypes: &f64) {
     // When a variant id file is not provided

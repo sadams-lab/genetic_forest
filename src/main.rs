@@ -21,6 +21,7 @@ fn main() {
     let mut subj_fraction: f64 = 0.666;
     let mut n_iter: usize = 1; 
     let mut var_cutoff: f32 = 0.;
+    let mut output_forest: bool = false;
     let mut threads: usize = 1;
     {
         let mut ap = ArgumentParser::new();
@@ -45,6 +46,8 @@ fn main() {
         .add_option(&["-c", "--cutoff"], Store, "Variant importance cutoff");
         ap.refer(&mut threads)
         .add_option(&["-t", "--threads"], Store, "Number of threads to use.");
+        ap.refer(&mut output_forest)
+        .add_option(&["--output-forest"], StoreTrue, "Output file with the forest");
         ap.parse_args_or_exit();
     }
     let filetype: u8 = input_file_type(&file_path);
@@ -86,7 +89,15 @@ fn main() {
             }
         }
     }
+    println!("#OVERALL_IMPORTANCE");
     f.print_var_importance(&variants);
+    if output_forest {
+        //Output trees
+        for tree in f.trees.unwrap() {
+            println!("#TREE");
+            tree.print(&0, "0");
+        };
+    }
 }
 
 /// Determine input filetype based on suffix
@@ -100,4 +111,3 @@ fn input_file_type(filename: &str) -> u8 {
         _ => 0,
     }
 }
-

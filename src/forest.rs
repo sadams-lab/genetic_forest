@@ -115,7 +115,7 @@ impl Forest {
         let tree_imps = self.importance();
         for (var, imp) in tree_imps {
             let mean: f32 = imp.iter().sum::<f32>() / imp.len() as f32;
-            println!("{:?}\t{:?}", variants[var].id, mean);
+            println!("{}\t{:?}", variants[var].id, mean);
         }
     }
 }

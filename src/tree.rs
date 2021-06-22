@@ -58,7 +58,7 @@ impl Node {
 
     /// Print a tree to stdout by iterating over recursive nodes
     pub fn print(&self, above: &usize, side: &str) {
-        println!("{:?}\t{}\t{:?}\t{:?}", above, side, self.var, self.gini);
+        println!("{:?}\t{:?}\t{}\t{:?}", self.var, above, side, self.gini);
         match &self.left {
             Some(n) => n.print(&self.var, &"left"),
             None => ()
