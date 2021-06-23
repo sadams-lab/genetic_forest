@@ -37,7 +37,7 @@ fn main() {
         ap.refer(&mut mtry)
         .add_option(&["-y", "--mtry-fraction"], Store, "MTRY fraction.");
         ap.refer(&mut max_depth)
-        .add_option(&["-o", "--max-depth"], Store, "Minimum number of subjects in a node (surrogate for max-depth).");
+        .add_option(&["-o", "--max-depth"], Store, "Max tree depth.");
         ap.refer(&mut subj_fraction)
         .add_option(&["-s", "--subject-fraction"], Store, "Fraction of subjects in each random sample.");
         ap.refer(&mut n_iter)
@@ -47,7 +47,7 @@ fn main() {
         ap.refer(&mut threads)
         .add_option(&["-t", "--threads"], Store, "Number of threads to use.");
         ap.refer(&mut output_forest)
-        .add_option(&["--output-forest"], StoreTrue, "Output file with the forest");
+        .add_option(&["--output-forest"], StoreTrue, "Output forest");
         ap.parse_args_or_exit();
     }
     let filetype: u8 = input_file_type(&file_path);
