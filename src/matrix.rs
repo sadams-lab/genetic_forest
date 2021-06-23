@@ -5,7 +5,7 @@ use std::fs::File;
 
 pub struct GenoMatrix {
     pub ids: Vec<String>,
-    pub phenotypes: Vec<u64>,
+    pub phenotypes: Vec<f64>,
     pub n_subjects: f64,
     pub n_genotypes: f64,
     pub n_genotypes_minus_mask: f64,
@@ -21,16 +21,17 @@ pub struct GenoMatrixSlice {
 
 impl GenoMatrix {
     
-    pub fn new(rdr: &mut csv::Reader<File>, mat_size: Shape) -> Self {
+    pub fn new(rdr: &mut csv::Reader<File>, mat_size: Shape, continuous_outcome: &bool) -> Self {
+        let pheno_weight: f64;
         let mut row_ids: Vec<String> = Vec::new();
-        let mut phenotypes: Vec<u64> = Vec::new();
+        let mut phenotypes: Vec<f64> = Vec::new();
         let mut geno_mat = TriMat::new(mat_size);
         let mut rownum = 0;
         for result in rdr.records() {
             let mut colnum = 2;
             let record = result.unwrap();
             row_ids.push(record[0].to_string());
-            phenotypes.push(record[1].parse::<u64>().unwrap());
+            phenotypes.push(record[1].parse::<f64>().unwrap());
             loop {
                 if colnum == mat_size.1 + 2 {
                     break
@@ -40,7 +41,11 @@ impl GenoMatrix {
             }
             rownum += 1
         }
-        let pheno_weight: f64 = phenotypes.iter().sum::<u64>() as f64 / mat_size.0 as f64;
+        if *continuous_outcome {
+            pheno_weight = -1.
+        } else {
+            pheno_weight = phenotypes.iter().sum::<f64>() as f64 / mat_size.0 as f64;
+        }
         GenoMatrix{
             ids: row_ids, 
             phenotypes: phenotypes,
@@ -69,12 +74,15 @@ impl GenoMatrix {
         let mut rng = thread_rng();
         for s in 0..self.n_subjects as usize {
             match self.phenotypes[s] {
-                0 => {
+                _x if self.pheno_weight == -1.0 => { // happens if pheno is continuous, no weighting applied
+                    subjs.push(s);
+                }
+                _x if _x == 0.0 => {
                     if rng.gen_bool(prob_0) {
                         subjs.push(s);
                     }
                 },
-                1 => {
+                _x if _x == 1.0 => {
                     if rng.gen_bool(prob_1) {
                         subjs.push(s);
                     }
@@ -98,10 +106,10 @@ impl GenoMatrix {
         }
     }
     
-    pub fn get_slice_data(&self, gm: &GenoMatrixSlice) -> (Vec<&u64>, Vec<&u64>, Vec<Vec<&u8>>) {
+    pub fn get_slice_data(&self, gm: &GenoMatrixSlice) -> (Vec<&f64>, Vec<&f64>, Vec<Vec<&u8>>) {
         let mut rng = thread_rng();
         let mut g_vec: Vec<Vec<&u8>> = Vec::new();
-        let mut p_vec: Vec<&u64> = Vec::new();
+        let mut p_vec: Vec<&f64> = Vec::new();
         for s in &gm.subj_ids {
             p_vec.push(&self.phenotypes[*s]);
         };
@@ -112,7 +120,7 @@ impl GenoMatrix {
             }
             g_vec.push(gv);
         };
-        let mut pheno2: Vec<&u64> = p_vec.to_vec();
+        let mut pheno2: Vec<&f64> = p_vec.to_vec();
         pheno2.shuffle(&mut rng);
         return (p_vec, pheno2, g_vec)
     }

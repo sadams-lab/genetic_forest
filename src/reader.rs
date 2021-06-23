@@ -10,7 +10,7 @@ use crate::utils;
 use std::str;
 use std::fs::File;
 
-pub fn read_matrix_csv(path: &str, sep: &str) -> matrix::GenoMatrix {
+pub fn read_matrix_csv(path: &str, sep: &str, continuous_outcome: &bool) -> matrix::GenoMatrix {
     let mut beginning: csv::Position = csv::Position::new();
     beginning.set_line(1);
     let mut reader = match make_reader(path, sep) {
@@ -22,7 +22,7 @@ pub fn read_matrix_csv(path: &str, sep: &str) -> matrix::GenoMatrix {
         Ok(_) => (),
         Err(e) => panic!("Error in file seek {:?}", e)
     }
-    return matrix::GenoMatrix::new(&mut reader, shape);
+    return matrix::GenoMatrix::new(&mut reader, shape, continuous_outcome);
 }
 
 pub fn read_variant_table(path: &str, sep: &str, n_genotypes: &f64) -> Vec<variants::Variant> {

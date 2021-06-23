@@ -6,6 +6,7 @@
 
 use crate::matrix;
 use crate::utils;
+use crate::statistics;
 
 use std::collections::HashMap;
 
@@ -14,7 +15,7 @@ use std::collections::HashMap;
 /// Where the top level node is allocated to the stack, and subsequent
 /// nodes on the heap. In order to 'draw' a tree, one must walk down recursive nodes
 pub struct Node {
-    pub gini: f32,
+    pub score: f32, // gini if binary outcome, sd reduction if continuous
     pub is_empty: bool,
     pub n: usize, // Number of subjects in tree
     pub neg: bool,
@@ -28,24 +29,24 @@ pub struct Node {
 /// Contains data that is passed to create
 /// a decision tree
 pub struct NodeData<'a> {
-    pub phenos: Vec<&'a u64>, // phenotype vector
-    pub phenos_shuffle: Vec<&'a u64>, // vector of shuffled phenotypes (randomly, for impurity correction)
+    pub phenos: Vec<&'a f64>, // phenotype vector
+    pub phenos_shuffle: Vec<&'a f64>, // vector of shuffled phenotypes (randomly, for impurity correction)
     pub genos: Vec<Vec<&'a u8>> // nested vector of genotypes
 }
 
 impl Node {
 
     /// The function that creates a tree
-    pub fn grow(node_data: NodeData, max_depth: i32, ms: matrix::GenoMatrixSlice) -> Self {
+    pub fn grow(node_data: NodeData, max_depth: i32, ms: matrix::GenoMatrixSlice, continuous_outcome: bool) -> Self {
         let depth: i32 = 0;
         let node_n = node_data.phenos.len();
-        return Node::new_node(&node_data, &ms, &max_depth, &depth, node_n, 1.);
+        return Node::new_node(&node_data, &ms, &max_depth, &depth, node_n, 1., &continuous_outcome);
     }
 
     /// An empty node, called internally to allow for terminal nodes that stop growth
     pub fn empty_node() -> Self {
         Node {
-            gini: std::f32::NAN,
+            score: std::f32::NAN,
             is_empty: true,
             n: 0,
             neg: true,
@@ -58,7 +59,7 @@ impl Node {
 
     /// Print a tree to stdout by iterating over recursive nodes
     pub fn print(&self, above: &usize, side: &str) {
-        println!("{:?}\t{:?}\t{}\t{:?}", self.var, above, side, self.gini);
+        println!("{:?}\t{:?}\t{}\t{:?}", self.var, above, side, self.score);
         match &self.left {
             Some(n) => n.print(&self.var, &"left"),
             None => ()
@@ -77,11 +78,11 @@ impl Node {
         let mut var_imp: HashMap<usize, Vec<f32>> = HashMap::new();
         /// Nested function to do the calculation
         fn imp(n: &Node, vi: &mut HashMap<usize, Vec<f32>>) {
-            let mut importance: f32 = (n.node_n as f32 / n.n as f32) * (n.gini);
+            let mut importance: f32 = (n.node_n as f32 / n.n as f32) * (n.score);
             match &n.left {
                 Some(nl) => {
-                    if &nl.gini > &0. {
-                        importance -= (&nl.node_n / n.n) as f32 * (&nl.gini);
+                    if &nl.score > &0. {
+                        importance -= (&nl.node_n / n.n) as f32 * (&nl.score);
                         imp(&nl, vi);
                     }
                 },
@@ -89,8 +90,8 @@ impl Node {
             };
             match &n.right {
                 Some(nr) => {
-                    if &nr.gini > &0. {
-                        importance -= (&nr.node_n / n.n) as f32 * (&nr.gini);
+                    if &nr.score > &0. {
+                        importance -= (&nr.node_n / n.n) as f32 * (&nr.score);
                         imp(&nr, vi);
                     }
                 },
@@ -117,61 +118,83 @@ impl Node {
 
     /// Recursive function for building the tree
     /// Kicked off when a new tree is created
-    fn new_node(node_data: &NodeData, ms: &matrix::GenoMatrixSlice, max_depth: &i32, depth: &i32, n: usize, parent_gini: f32) -> Node {
+    fn new_node(node_data: &NodeData, ms: &matrix::GenoMatrixSlice, max_depth: &i32, depth: &i32, n: usize, parent_score: f32, continuous_outcome: &bool) -> Node {
         let new_depth = depth + 1;
-        let mut ginis: Vec<f32> = Vec::new(); // Vector of per-genotype ginis
+        let mut best_score_index: usize = 0;
+        let mut scores: Vec<f32> = Vec::new(); // Vector of per-genotype scores
         for k in &node_data.genos {
-            // Each genotype vector has gini calculated based on the actual phenos (gini1)
-            // and the shuffled phenotypes (gini2)
-            let gini = calc_gini(&node_data.phenos, k, &parent_gini);
-            let gini2 = calc_gini(&node_data.phenos_shuffle, k, &parent_gini);
-            if gini < gini2 {
-                ginis.push(gini);
-            }
-            else { 
-                // if shuffled pheno gini is better than the actual pheno, then use that one
-                // but make it negative to indicate that it is to be a penalty rather than a contributor
-                // to overall importance
-                ginis.push(-1. * gini2);
-            }
-        };
-        if ginis.len() == 0 {
-            return Node::empty_node(); 
+            // Each genotype vector has score calculated based on the actual phenos (score1)
+            // and the shuffled phenotypes (score2)
+            if *continuous_outcome {
+                let score = calc_sdr(&node_data.phenos, k, &parent_score);
+                let score2 = calc_sdr(&node_data.phenos_shuffle, k, &parent_score);
+                if score > score2 {
+                    scores.push(score);
+                }
+                else { 
+                    // if shuffled pheno score is better than the actual pheno, then use that one
+                    // but make it negative to indicate that it is to be a penalty rather than a contributor
+                    // to overall importance
+                    scores.push(-1. * score2);
+                }
+                if scores.len() == 0 {
+                    return Node::empty_node(); 
+                }
+
+                best_score_index = utils::get_max_index(&scores);
+
+            } else {
+                let score = calc_gini(&node_data.phenos, k, &parent_score);
+                let score2 = calc_gini(&node_data.phenos_shuffle, k, &parent_score);
+                if score < score2 {
+                    scores.push(score);
+                }
+                else { 
+                    // if shuffled pheno score is better than the actual pheno, then use that one
+                    // but make it negative to indicate that it is to be a penalty rather than a contributor
+                    // to overall importance
+                    scores.push(-1. * score2);
+                }
+                if scores.len() == 0 {
+                    return Node::empty_node(); 
+                }
+                best_score_index = utils::get_min_index(&scores); // get lowest Gini score
+            };
         }
-        let min_gini_index: usize = utils::get_min_index(&ginis);
-        let mut gini = ginis[min_gini_index];
+        let mut score = scores[best_score_index];
         let mut neg: bool = false;
-        if gini < 0. {
+        if score < 0. {
             neg = true;
-            gini = gini * -1.;
+            score = score * -1.;
         }
-        let left_indices: &Vec<bool> = &node_data.genos[min_gini_index].iter().map(|r| **r==0).collect();
-        let right_indices: &Vec<bool> = &node_data.genos[min_gini_index].iter().map(|r| **r==1).collect();
+        let left_indices: &Vec<bool> = &node_data.genos[best_score_index].iter().map(|r| **r==0).collect();
+        let right_indices: &Vec<bool> = &node_data.genos[best_score_index].iter().map(|r| **r==1).collect();
         let new_node_data = &node_data.split(&left_indices, &right_indices);
         if depth > max_depth {
             return Node {
-                gini: gini,
+                score: score,
                 is_empty: false,
                 n: n,
                 neg: neg,
                 node_n: node_data.phenos.len(),
-                var: ms.genotype_ids[min_gini_index],
+                var: ms.genotype_ids[best_score_index],
                 left: None,
                 right: None
             };
         }
         Node {
-            gini: gini,
+            score: score,
             is_empty: false,
             n: n,
             neg: neg,
             node_n: node_data.phenos.len(),
-            var: ms.genotype_ids[min_gini_index],
-            left: Some(Box::new(Node::new_node(&new_node_data.0, ms, max_depth, &new_depth, n, gini))),
-            right: Some(Box::new(Node::new_node(&new_node_data.1, ms, max_depth, &new_depth, n, gini)))
+            var: ms.genotype_ids[best_score_index],
+            left: Some(Box::new(Node::new_node(&new_node_data.0, ms, max_depth, &new_depth, n, score, continuous_outcome))),
+            right: Some(Box::new(Node::new_node(&new_node_data.1, ms, max_depth, &new_depth, n, score, continuous_outcome)))
         }
     }
 }
+
 
 /// Implementation of node data
 /// Methods to manage the data that is used in the growing tree
@@ -219,9 +242,9 @@ impl<'a> NodeData<'a> {
         return (left_genotypes, right_genotypes);
     }
     
-    fn _split_phenos(&self, left_indices: &Vec<bool>, right_indices: &Vec<bool>) -> (Vec<&'a u64>, Vec<&'a u64>)  {
-        let mut left_phenotypes: Vec<&u64> = Vec::new();
-        let mut right_phenotypes: Vec<&u64> = Vec::new();
+    fn _split_phenos(&self, left_indices: &Vec<bool>, right_indices: &Vec<bool>) -> (Vec<&'a f64>, Vec<&'a f64>)  {
+        let mut left_phenotypes: Vec<&f64> = Vec::new();
+        let mut right_phenotypes: Vec<&f64> = Vec::new();
         let mut ind: usize = 0;
         for i in left_indices.iter().zip(right_indices.iter()) {
             if *i.0 {
@@ -235,9 +258,9 @@ impl<'a> NodeData<'a> {
         return (left_phenotypes, right_phenotypes);
     }
 
-    fn _split_phenos_shuffle(&self, left_indices: &Vec<bool>, right_indices: &Vec<bool>) -> (Vec<&'a u64>, Vec<&'a u64>)  {
-        let mut left_phenotypes: Vec<&u64> = Vec::new();
-        let mut right_phenotypes: Vec<&u64> = Vec::new();
+    fn _split_phenos_shuffle(&self, left_indices: &Vec<bool>, right_indices: &Vec<bool>) -> (Vec<&'a f64>, Vec<&'a f64>)  {
+        let mut left_phenotypes: Vec<&f64> = Vec::new();
+        let mut right_phenotypes: Vec<&f64> = Vec::new();
         let mut ind: usize = 0;
         for i in left_indices.iter().zip(right_indices.iter()) {
             if *i.0 {
@@ -252,7 +275,29 @@ impl<'a> NodeData<'a> {
     }
 }
 
-pub fn calc_gini(p: &Vec<&u64>, g: &Vec<&u8>, parent_gini: &f32) -> f32 {
+pub fn calc_sdr(p: &Vec<&f64>, g: &Vec<&u8>, parent_score: &f32) -> f32 {
+    //let top_sd = statistics::std_deviation(p)as f32;
+    let mut g0vec: Vec<&f64> = Vec::new();
+    let mut g1vec: Vec<&f64> = Vec::new();
+    for pg in p.iter().zip(g.iter()) {
+        let (pi, gi) = pg;
+        match *gi {
+            0 => g0vec.push(pi),
+            1 => g1vec.push(pi),
+            _ => panic!("variable mismatch?, {}, {}", pi, gi),
+        }
+    }
+    let g0sd = statistics::std_deviation(&g0vec) as f32;
+    let g1sd = statistics::std_deviation(&g1vec) as f32;
+    let sd_weighted = match g.len() {
+        0 => 0.,
+        _ => {(g0sd * (g0vec.len() / g.len()) as f32) + (g1sd * (g1vec.len() / g.len()) as f32)}
+    };
+    *parent_score - sd_weighted
+
+}
+
+pub fn calc_gini(p: &Vec<&f64>, g: &Vec<&u8>, parent_score: &f32) -> f32 {
     /* 
     vector of genotypes (0,1,2) (g)
     vector of phenotypes (0,1) (p)
@@ -274,7 +319,7 @@ pub fn calc_gini(p: &Vec<&u64>, g: &Vec<&u8>, parent_gini: &f32) -> f32 {
 
     for pg in p.iter().zip(g.iter()) {
         let (pi, gi) = pg;
-        match (*pi, *gi) {
+        match (**pi as u64, *gi) {
             (0, 0) => p0g0 += 1.,
             (1, 0) => p1g0 += 1.,
             (0, 1) => p0g1 += 1.,
@@ -285,8 +330,8 @@ pub fn calc_gini(p: &Vec<&u64>, g: &Vec<&u8>, parent_gini: &f32) -> f32 {
 
     let p_inst: f32 = p.len() as f32;
 
-    let g0_g = parent_gini - (p0g0 / (p0g0+p1g0)).powf(pi) - (p1g0 / (p0g0+p1g0)).powf(pi);
-    let g1_g = parent_gini - (p0g1 / (p0g1+p1g1)).powf(pi) - (p1g1 / (p0g1+p1g1)).powf(pi);
+    let g0_g = parent_score - (p0g0 / (p0g0+p1g0)).powf(pi) - (p1g0 / (p0g0+p1g0)).powf(pi);
+    let g1_g = parent_score - (p0g1 / (p0g1+p1g1)).powf(pi) - (p1g1 / (p0g1+p1g1)).powf(pi);
 
     let gi = (((p0g0+p1g0)/p_inst) * g0_g) + (((p0g1+p1g1)/p_inst) * g1_g);
     if f32::is_nan(gi) {

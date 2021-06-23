@@ -46,6 +46,22 @@ pub fn get_min_index(vals: &Vec<f32>) -> usize {
     return min_i
 }
 
+/// Take vector of floats, return the index of the maximum
+pub fn get_max_index(vals: &Vec<f32>) -> usize {
+    let mut max_val: f32 = 1.;
+    let mut max_i: usize = 0;
+    let mut i: usize = 0;
+    for g in vals {
+        let abs_val = g.abs(); // get absolute value since they might be negative
+        if abs_val > max_val {
+            max_val = *g;
+            max_i = i;
+        };
+        i += 1;
+    }
+    return max_i
+}
+
 /// Get the size of a reader object
 /// In number of lines
 pub fn get_mat_size(rdr: &mut csv::Reader<File>) -> Shape {

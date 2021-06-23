@@ -22,7 +22,8 @@ pub struct HyperParameters {
     pub n_tree: i32,
     pub mtry: f64,
     pub max_depth: i32,
-    pub subj_fraction: f64
+    pub subj_fraction: f64,
+    pub continuous_outcome: bool
 }
 
 pub struct Forest {
@@ -133,5 +134,5 @@ fn make_tree(gm: &matrix::GenoMatrix, hp: &HyperParameters) -> Result<tree::Node
         phenos_shuffle: data.1,
         genos: data.2
     };
-    Ok(tree::Node::grow(tree_data, hp.max_depth, sample))
+    Ok(tree::Node::grow(tree_data, hp.max_depth, sample, hp.continuous_outcome))
 }

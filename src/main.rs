@@ -7,6 +7,7 @@ pub mod tree;
 pub mod forest;
 pub mod utils;
 pub mod variants;
+pub mod statistics;
 
 use argparse::{ArgumentParser, StoreTrue, Store};
 
@@ -21,6 +22,7 @@ fn main() {
     let mut subj_fraction: f64 = 0.666;
     let mut n_iter: usize = 1; 
     let mut var_cutoff: f32 = 0.;
+    let mut continuous_outcome: bool = false;
     let mut output_forest: bool = false;
     let mut threads: usize = 1;
     {
@@ -48,12 +50,14 @@ fn main() {
         .add_option(&["-t", "--threads"], Store, "Number of threads to use.");
         ap.refer(&mut output_forest)
         .add_option(&["--output-forest"], StoreTrue, "Output forest");
+        ap.refer(&mut continuous_outcome)
+        .add_option(&["--continuous-outcome"], StoreTrue, "Outcome is continuous (vs binary)");
         ap.parse_args_or_exit();
     }
     let filetype: u8 = input_file_type(&file_path);
     let mut data = match filetype {
-        1 => reader::read_matrix_csv(&file_path, &","),
-        2 => reader::read_matrix_csv(&file_path, &"\t"),
+        1 => reader::read_matrix_csv(&file_path, &",", &continuous_outcome),
+        2 => reader::read_matrix_csv(&file_path, &"\t", &continuous_outcome),
         _ => panic!("Filetype not supported!"),
     };
     let variants = match filetype {
@@ -67,7 +71,8 @@ fn main() {
         n_tree: n_tree, 
         mtry: mtry, 
         max_depth: max_depth, 
-        subj_fraction: subj_fraction
+        subj_fraction: subj_fraction,
+        continuous_outcome: continuous_outcome
     };
     let mut f = forest::Forest::new(hp);
     match f.grow(&data) {
