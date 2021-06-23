@@ -15,7 +15,7 @@ pub fn read_matrix_csv(path: &str, sep: &str) -> matrix::GenoMatrix {
     beginning.set_line(1);
     let mut reader = match make_reader(path, sep) {
         Ok(reader) => reader,
-        Err(why) => panic!(why)
+        Err(why) => panic!("Error with making the reader: {:?}", why)
     };
     let shape = utils::get_mat_size(&mut reader);
     match reader.seek(beginning) {
