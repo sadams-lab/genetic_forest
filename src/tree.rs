@@ -126,18 +126,17 @@ impl Node {
             // Each genotype vector has score calculated based on the actual phenos (score1)
             // and the shuffled phenotypes (score2)
             if *continuous_outcome {
-                let score = calc_sdr(&node_data.phenos, k, &parent_score);
-                let score2 = calc_sdr(&node_data.phenos_shuffle, k, &parent_score);
-                if score > score2 {
-                    scores.push(score);
-                }
-                else { 
+                let score = calc_sdr(&node_data.phenos, k);
+                let score2 = calc_sdr(&node_data.phenos_shuffle, k);
+                match score {
                     // if shuffled pheno score is better than the actual pheno, then use that one
                     // but make it negative to indicate that it is to be a penalty rather than a contributor
                     // to overall importance
-                    scores.push(-1. * score2);
-                }
-
+                    _x if score == 0. => (),
+                    _x if score > score2 => {scores.push(score)},
+                    _x if score <= score2 => {scores.push(score2 * -1.)},
+                    _ => ()
+                };
                 best_score_index = utils::get_max_index(&scores);
 
             } else {
@@ -273,7 +272,7 @@ impl<'a> NodeData<'a> {
     }
 }
 
-pub fn calc_sdr(p: &Vec<&f64>, g: &Vec<&u8>, parent_score: &f32) -> f32 {
+pub fn calc_sdr(p: &Vec<&f64>, g: &Vec<&u8>) -> f32 {
     let top_sd = statistics::std_deviation(p)as f32;
     let mut g0vec: Vec<&f64> = Vec::new();
     let mut g1vec: Vec<&f64> = Vec::new();
