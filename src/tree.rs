@@ -137,9 +137,6 @@ impl Node {
                     // to overall importance
                     scores.push(-1. * score2);
                 }
-                if scores.len() == 0 {
-                    return Node::empty_node(); 
-                }
 
                 best_score_index = utils::get_max_index(&scores);
 
@@ -155,11 +152,12 @@ impl Node {
                     // to overall importance
                     scores.push(-1. * score2);
                 }
-                if scores.len() == 0 {
-                    return Node::empty_node(); 
-                }
+
                 best_score_index = utils::get_min_index(&scores); // get lowest Gini score
             };
+        }
+        if scores.len() == 0 {
+            return Node::empty_node(); 
         }
         let mut score = scores[best_score_index];
         let mut neg: bool = false;
@@ -276,7 +274,7 @@ impl<'a> NodeData<'a> {
 }
 
 pub fn calc_sdr(p: &Vec<&f64>, g: &Vec<&u8>, parent_score: &f32) -> f32 {
-    //let top_sd = statistics::std_deviation(p)as f32;
+    let top_sd = statistics::std_deviation(p)as f32;
     let mut g0vec: Vec<&f64> = Vec::new();
     let mut g1vec: Vec<&f64> = Vec::new();
     for pg in p.iter().zip(g.iter()) {
@@ -293,7 +291,10 @@ pub fn calc_sdr(p: &Vec<&f64>, g: &Vec<&u8>, parent_score: &f32) -> f32 {
         0 => 0.,
         _ => {(g0sd * (g0vec.len() / g.len()) as f32) + (g1sd * (g1vec.len() / g.len()) as f32)}
     };
-    *parent_score - sd_weighted
+    if sd_weighted > top_sd {
+        return 0.
+    }
+    top_sd - sd_weighted
 
 }
 

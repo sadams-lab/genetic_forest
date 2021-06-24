@@ -75,8 +75,10 @@ impl GenoMatrix {
         for s in 0..self.n_subjects as usize {
             match self.phenotypes[s] {
                 _x if self.pheno_weight == -1.0 => { // happens if pheno is continuous, no weighting applied
-                    subjs.push(s);
-                }
+                    if rng.gen_bool(subj_frac) {
+                        subjs.push(s);
+                    }
+                },
                 _x if _x == 0.0 => {
                     if rng.gen_bool(prob_0) {
                         subjs.push(s);
