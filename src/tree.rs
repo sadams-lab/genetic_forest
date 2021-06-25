@@ -59,7 +59,9 @@ impl Node {
 
     /// Print a tree to stdout by iterating over recursive nodes
     pub fn print(&self, above: &usize, side: &str) {
-        println!("{:?}\t{:?}\t{}\t{:?}", self.var, above, side, self.score);
+        if !self.is_empty {
+            println!("{:?}\t{:?}\t{}\t{:?}", self.var, above, side, self.score);
+        }
         match &self.left {
             Some(n) => n.print(&self.var, &"left"),
             None => ()
@@ -132,12 +134,13 @@ impl Node {
                     // if shuffled pheno score is better than the actual pheno, then use that one
                     // but make it negative to indicate that it is to be a penalty rather than a contributor
                     // to overall importance
-                    _x if score == 0. => (),
                     _x if score > score2 => {scores.push(score)},
-                    _x if score <= score2 => {scores.push(score2 * -1.)},
-                    _ => ()
+                    _ => {scores.push(score2 * -1.)}
                 };
                 best_score_index = utils::get_max_index(&scores);
+                if scores[best_score_index].abs() == 0. {
+                    return Node::empty_node();
+                }
 
             } else {
                 let score = calc_gini(&node_data.phenos, k, &parent_score);
@@ -154,9 +157,6 @@ impl Node {
 
                 best_score_index = utils::get_min_index(&scores); // get lowest Gini score
             };
-        }
-        if scores.len() == 0 {
-            return Node::empty_node(); 
         }
         let mut score = scores[best_score_index];
         let mut neg: bool = false;
@@ -278,7 +278,7 @@ pub fn calc_sdr(p: &Vec<&f64>, g: &Vec<&u8>) -> f32 {
     let mut g1vec: Vec<&f64> = Vec::new();
     for pg in p.iter().zip(g.iter()) {
         let (pi, gi) = pg;
-        match *gi {
+        match **gi {
             0 => g0vec.push(pi),
             1 => g1vec.push(pi),
             _ => panic!("variable mismatch?, {}, {}", pi, gi),
@@ -286,9 +286,13 @@ pub fn calc_sdr(p: &Vec<&f64>, g: &Vec<&u8>) -> f32 {
     }
     let g0sd = statistics::std_deviation(&g0vec) as f32;
     let g1sd = statistics::std_deviation(&g1vec) as f32;
+    if g0vec.len() == 0 || g1vec.len() == 0 {
+        // prevents branching to the same or 100% correlated variant
+        return 0.
+    }
     let sd_weighted = match g.len() {
-        0 => 0.,
-        _ => {(g0sd * (g0vec.len() / g.len()) as f32) + (g1sd * (g1vec.len() / g.len()) as f32)}
+        0 => return 0.,
+        _ => {(g0sd * (g0vec.len() as f32 / g.len() as f32)) + (g1sd * (g1vec.len() as f32 / g.len() as f32 ))}
     };
     if sd_weighted > top_sd {
         return 0.
