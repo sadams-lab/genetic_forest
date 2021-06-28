@@ -21,7 +21,8 @@ fn main() {
     let mut max_depth: i32 = 5;
     let mut subj_fraction: f64 = 0.666;
     let mut n_iter: usize = 1; 
-    let mut var_cutoff: f32 = 0.;
+    let mut var_cutoff_1: f32 = 0.;
+    let mut var_cutoff_2: f32 = 0.;
     let mut continuous_outcome: bool = false;
     let mut output_forest: bool = false;
     let mut threads: usize = 1;
@@ -44,8 +45,10 @@ fn main() {
         .add_option(&["-s", "--subject-fraction"], Store, "Fraction of subjects in each random sample.");
         ap.refer(&mut n_iter)
         .add_option(&["-r", "--iterations"], Store, "Number of iterations of the genetic algorithm.");
-        ap.refer(&mut var_cutoff)
-        .add_option(&["-c", "--cutoff"], Store, "Variant importance cutoff");
+        ap.refer(&mut var_cutoff_1)
+        .add_option(&["--cutoff-1"], Store, "Variant importance cutoff for initial forest");
+        ap.refer(&mut var_cutoff_2)
+        .add_option(&["--cutoff-2"], Store, "Variant importance cutoff for subsequent forests");
         ap.refer(&mut threads)
         .add_option(&["-t", "--threads"], Store, "Number of threads to use.");
         ap.refer(&mut output_forest)
@@ -82,9 +85,10 @@ fn main() {
             std::process::exit(1);
         }
     }
-    let k_vars = f.keep_vars(var_cutoff);
+    let k_vars = f.keep_vars(var_cutoff_1);
     eprintln!("Keeping {:?} variants and initiating iterative grow and prune.", &k_vars.len());
     &data.set_genotype_indices(k_vars);
+    eprintln!("Growing forest 1 of {:?}", n_iter);
     for n in 1..n_iter {
         match f.grow(&data) {
             Ok(_) => (),
@@ -93,8 +97,8 @@ fn main() {
                 break
             }
         }
-        let f_vars = f.mask_vars(var_cutoff);
-        eprintln!("Masking {:?} variants and growing forest {:?} of {:?}.", &f_vars.len(), n, n_iter);
+        let f_vars = f.mask_vars(var_cutoff_2);
+        eprintln!("Masking {:?} variants and growing forest {:?} of {:?}.", &f_vars.len(), n + 1, n_iter);
         &data.mask_vars(f_vars);
     }
     println!("#OVERALL_IMPORTANCE");
