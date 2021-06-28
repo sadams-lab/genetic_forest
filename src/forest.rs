@@ -100,6 +100,18 @@ impl Forest {
         }
         vars
     }
+
+    pub fn keep_vars(&self, cutoff: f32) -> Vec<usize> {
+        let mut vars: Vec<usize> = Vec::new();
+        let tree_imps = self.importance();
+        for (var, imp) in tree_imps {
+            let mean: f32 = imp.iter().sum::<f32>() / imp.len() as f32;
+            if mean >= cutoff {
+                vars.push(var);
+            }
+        }
+        vars
+    }
     
     /// print the variant + importance to stdout
     pub fn print_var_importance(&self, variants: &Vec<variants::Variant>) {

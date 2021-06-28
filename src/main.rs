@@ -66,7 +66,7 @@ fn main() {
         _ => panic!("Filetype not supported!"),
     };
     utils::make_thread_pool(threads);
-    eprintln!("Growing forest 1 of {:?}.", n_iter);
+    eprintln!("Growing initial forest");
     let hp = forest::HyperParameters {
         n_tree: n_tree, 
         mtry: mtry, 
@@ -82,10 +82,10 @@ fn main() {
             std::process::exit(1);
         }
     }
+    let k_vars = f.keep_vars(var_cutoff);
+    eprintln!("Keeping {:?} variants and initiating iterative grow and prune.", &k_vars.len());
+    &data.set_genotype_indices(k_vars);
     for n in 1..n_iter {
-        let f_vars = f.mask_vars(var_cutoff);
-        eprintln!("Masking {:?} variants and growing forest {:?} of {:?}.", &f_vars.len(), n + 1, n_iter);
-        &data.mask_vars(f_vars);
         match f.grow(&data) {
             Ok(_) => (),
             Err(err) => {
@@ -93,6 +93,9 @@ fn main() {
                 break
             }
         }
+        let f_vars = f.mask_vars(var_cutoff);
+        eprintln!("Masking {:?} variants and growing forest {:?} of {:?}.", &f_vars.len(), n, n_iter);
+        &data.mask_vars(f_vars);
     }
     println!("#OVERALL_IMPORTANCE");
     f.print_var_importance(&variants);

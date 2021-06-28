@@ -11,7 +11,8 @@ pub struct GenoMatrix {
     pub n_genotypes_minus_mask: f64,
     var_mask: Vec<usize>,
     pheno_weight: f64, // weight to use for selecting phenotype (e.g. 0.5 would be balanced...)
-    genotypes: CsMat<u8>
+    genotypes: CsMat<u8>,
+    genotype_indices: Vec<usize>
 }
 
 pub struct GenoMatrixSlice {
@@ -54,7 +55,8 @@ impl GenoMatrix {
             n_genotypes_minus_mask: mat_size.1 as f64,
             var_mask: Vec::new(),
             genotypes: geno_mat.to_csr(),
-            pheno_weight: pheno_weight
+            pheno_weight: pheno_weight,
+            genotype_indices: (0..mat_size.1).collect()
         }
     }
 
@@ -92,13 +94,13 @@ impl GenoMatrix {
                 _ => ()
             }
         };
-        for g in 0..self.n_genotypes as usize {
-            if self.var_mask.iter().any(|i| i == &g) { // This is brute force over every variant for n_genotypes, which is slow
+        for g in &self.genotype_indices {
+            if self.var_mask.iter().any(|i| i == g) { // This is brute force over every variant for n_genotypes, which is slow
                 (); // skip variants that are masked
             } 
             else {
                 if rng.gen_bool(var_frac) {
-                    g_ids.push(g);
+                    g_ids.push(*g);
                 };
             };
         };
@@ -134,5 +136,9 @@ impl GenoMatrix {
         for v in variants {
             self.var_mask.push(v);
         }
+    }
+
+    pub fn set_genotype_indices(&mut self, variants: Vec<usize>) {
+        self.genotype_indices = variants;
     }
 }
