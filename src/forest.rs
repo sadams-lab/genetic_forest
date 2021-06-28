@@ -9,6 +9,7 @@ use crate::matrix;
 use crate::variants;
 
 use rayon::prelude::*;
+use indicatif::ParallelProgressIterator;
 
 use std::io;
 use std::collections::HashMap;
@@ -56,6 +57,7 @@ impl Forest {
 
     pub fn grow(&mut self, gm: &matrix::GenoMatrix) -> Result<(), io::Error> {
         let t: Vec<tree::Node> = (0..self.hyperparameters.n_tree).into_par_iter()
+        .progress_count(self.hyperparameters.n_tree as u64)
         .map(|_| -> tree::Node {
             match make_tree(gm, &self.hyperparameters) {
                 Ok(tree) => return tree,

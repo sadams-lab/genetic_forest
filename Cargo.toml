@@ -10,3 +10,4 @@ sprs = "*"
 rand = "*"
 rayon = "1.5"
 argparse = "0.2.2"
+indicatif = {version = "*", features = ["rayon"]}
