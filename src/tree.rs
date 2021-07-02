@@ -15,7 +15,7 @@ use std::collections::HashMap;
 /// Where the top level node is allocated to the stack, and subsequent
 /// nodes on the heap. In order to 'draw' a tree, one must walk down recursive nodes
 pub struct Node {
-    pub score: f32, // gini if binary outcome, sd reduction if continuous
+    pub score: f64, // gini if binary outcome, sd reduction if continuous
     pub is_empty: bool,
     pub n: usize, // Number of subjects in tree
     pub neg: bool,
@@ -46,7 +46,7 @@ impl Node {
     /// An empty node, called internally to allow for terminal nodes that stop growth
     pub fn empty_node() -> Self {
         Node {
-            score: std::f32::NAN,
+            score: std::f64::NAN,
             is_empty: true,
             n: 0,
             neg: true,
@@ -73,18 +73,18 @@ impl Node {
     }
 
     /// Calculate the importance of each variant used in a tree
-    pub fn get_importance(&self) -> HashMap<usize, Vec<f32>> {
+    pub fn get_importance(&self) -> HashMap<usize, Vec<f64>> {
         // variant importances are stored in a hashmap with index: <importance, importance>
         // we store the importances as a vector because one feature might be selected multiple times in 
         // a single tree.
-        let mut var_imp: HashMap<usize, Vec<f32>> = HashMap::new();
+        let mut var_imp: HashMap<usize, Vec<f64>> = HashMap::new();
         /// Nested function to do the calculation
-        fn imp(n: &Node, vi: &mut HashMap<usize, Vec<f32>>) {
-            let mut importance: f32 = (n.node_n as f32 / n.n as f32) * (n.score);
+        fn imp(n: &Node, vi: &mut HashMap<usize, Vec<f64>>) {
+            let mut importance: f64 = (n.node_n as f64 / n.n as f64) * (n.score);
             match &n.left {
                 Some(nl) => {
                     if &nl.score > &0. {
-                        importance -= (&nl.node_n / n.n) as f32 * (&nl.score);
+                        importance -= (&nl.node_n / n.n) as f64 * (&nl.score);
                         imp(&nl, vi);
                     }
                 },
@@ -93,7 +93,7 @@ impl Node {
             match &n.right {
                 Some(nr) => {
                     if &nr.score > &0. {
-                        importance -= (&nr.node_n / n.n) as f32 * (&nr.score);
+                        importance -= (&nr.node_n / n.n) as f64 * (&nr.score);
                         imp(&nr, vi);
                     }
                 },
@@ -120,10 +120,10 @@ impl Node {
 
     /// Recursive function for building the tree
     /// Kicked off when a new tree is created
-    fn new_node(node_data: &NodeData, ms: &matrix::GenoMatrixSlice, max_depth: &i32, depth: &i32, n: usize, parent_score: f32, continuous_outcome: &bool) -> Node {
+    fn new_node(node_data: &NodeData, ms: &matrix::GenoMatrixSlice, max_depth: &i32, depth: &i32, n: usize, parent_score: f64, continuous_outcome: &bool) -> Node {
         let new_depth = depth + 1;
         let mut best_score_index: usize = 0;
-        let mut scores: Vec<f32> = Vec::new(); // Vector of per-genotype scores
+        let mut scores: Vec<f64> = Vec::new(); // Vector of per-genotype scores
         for k in &node_data.genos {
             // Each genotype vector has score calculated based on the actual phenos (score1)
             // and the shuffled phenotypes (score2)
@@ -272,8 +272,8 @@ impl<'a> NodeData<'a> {
     }
 }
 
-pub fn calc_sdr(p: &Vec<&f64>, g: &Vec<&u8>) -> f32 {
-    let top_sd = statistics::std_deviation(p)as f32;
+pub fn calc_sdr(p: &Vec<&f64>, g: &Vec<&u8>) -> f64 {
+    let top_sd = statistics::std_deviation(p)as f64;
     let mut g0vec: Vec<&f64> = Vec::new();
     let mut g1vec: Vec<&f64> = Vec::new();
     for pg in p.iter().zip(g.iter()) {
@@ -284,15 +284,15 @@ pub fn calc_sdr(p: &Vec<&f64>, g: &Vec<&u8>) -> f32 {
             _ => panic!("variable mismatch?, {}, {}", pi, gi),
         }
     }
-    let g0sd = statistics::std_deviation(&g0vec) as f32;
-    let g1sd = statistics::std_deviation(&g1vec) as f32;
+    let g0sd = statistics::std_deviation(&g0vec) as f64;
+    let g1sd = statistics::std_deviation(&g1vec) as f64;
     if g0vec.len() == 0 || g1vec.len() == 0 {
         // prevents branching to the same or 100% correlated variant
         return 0.
     }
     let sd_weighted = match g.len() {
         0 => return 0.,
-        _ => {(g0sd * (g0vec.len() as f32 / g.len() as f32)) + (g1sd * (g1vec.len() as f32 / g.len() as f32 ))}
+        _ => {(g0sd * (g0vec.len() as f64 / g.len() as f64)) + (g1sd * (g1vec.len() as f64 / g.len() as f64 ))}
     };
     if sd_weighted > top_sd {
         return 0.
@@ -301,7 +301,7 @@ pub fn calc_sdr(p: &Vec<&f64>, g: &Vec<&u8>) -> f32 {
 
 }
 
-pub fn calc_gini(p: &Vec<&f64>, g: &Vec<&u8>, parent_score: &f32) -> f32 {
+pub fn calc_gini(p: &Vec<&f64>, g: &Vec<&u8>, parent_score: &f64) -> f64 {
     /* 
     vector of genotypes (0,1,2) (g)
     vector of phenotypes (0,1) (p)
@@ -314,12 +314,12 @@ pub fn calc_gini(p: &Vec<&f64>, g: &Vec<&u8>, parent_score: &f32) -> f32 {
 
     */
 
-    let pi: f32 = 2.;
+    let pi: f64 = 2.;
 
-    let mut p0g0: f32 = 0.;
-    let mut p1g0: f32 = 0.;
-    let mut p0g1: f32 = 0.;
-    let mut p1g1: f32 = 0.;
+    let mut p0g0: f64 = 0.;
+    let mut p1g0: f64 = 0.;
+    let mut p0g1: f64 = 0.;
+    let mut p1g1: f64 = 0.;
 
     for pg in p.iter().zip(g.iter()) {
         let (pi, gi) = pg;
@@ -332,13 +332,13 @@ pub fn calc_gini(p: &Vec<&f64>, g: &Vec<&u8>, parent_score: &f32) -> f32 {
         }
     }
 
-    let p_inst: f32 = p.len() as f32;
+    let p_inst: f64 = p.len() as f64;
 
     let g0_g = parent_score - (p0g0 / (p0g0+p1g0)).powf(pi) - (p1g0 / (p0g0+p1g0)).powf(pi);
     let g1_g = parent_score - (p0g1 / (p0g1+p1g1)).powf(pi) - (p1g1 / (p0g1+p1g1)).powf(pi);
 
     let gi = (((p0g0+p1g0)/p_inst) * g0_g) + (((p0g1+p1g1)/p_inst) * g1_g);
-    if f32::is_nan(gi) {
+    if f64::is_nan(gi) {
         return 1.
     };
     return gi

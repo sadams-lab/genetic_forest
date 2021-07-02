@@ -31,8 +31,8 @@ pub fn sum_bool_vec(v: &Vec<bool>) -> i32 {
 }
 
 /// Take vector of floats, return the index of the minumum
-pub fn get_min_index(vals: &Vec<f32>) -> usize {
-    let mut min_val: f32 = 1.;
+pub fn get_min_index(vals: &Vec<f64>) -> usize {
+    let mut min_val: f64 = 1.;
     let mut min_i: usize = 0;
     let mut i: usize = 0;
     for g in vals {
@@ -47,8 +47,8 @@ pub fn get_min_index(vals: &Vec<f32>) -> usize {
 }
 
 /// Take vector of floats, return the index of the maximum
-pub fn get_max_index(vals: &Vec<f32>) -> usize {
-    let mut max_val: f32 = 0.;
+pub fn get_max_index(vals: &Vec<f64>) -> usize {
+    let mut max_val: f64 = 0.;
     let mut max_i: usize = 0;
     let mut i: usize = 0;
     for g in vals {

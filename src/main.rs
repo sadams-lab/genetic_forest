@@ -8,6 +8,7 @@ pub mod forest;
 pub mod utils;
 pub mod variants;
 pub mod statistics;
+pub mod z_table;
 
 use argparse::{ArgumentParser, StoreTrue, Store};
 
@@ -21,8 +22,7 @@ fn main() {
     let mut max_depth: i32 = 5;
     let mut subj_fraction: f64 = 0.666;
     let mut n_iter: usize = 1; 
-    let mut var_cutoff_1: f32 = 0.;
-    let mut var_cutoff_2: f32 = 0.;
+    let mut p_keep: f64 = 0.05;
     let mut continuous_outcome: bool = false;
     let mut output_forest: bool = false;
     let mut threads: usize = 1;
@@ -45,10 +45,8 @@ fn main() {
         .add_option(&["-s", "--subject-fraction"], Store, "Fraction of subjects in each random sample.");
         ap.refer(&mut n_iter)
         .add_option(&["-r", "--iterations"], Store, "Number of iterations of the genetic algorithm.");
-        ap.refer(&mut var_cutoff_1)
-        .add_option(&["--cutoff-1"], Store, "Variant importance cutoff for initial forest");
-        ap.refer(&mut var_cutoff_2)
-        .add_option(&["--cutoff-2"], Store, "Variant importance cutoff for subsequent forests");
+        ap.refer(&mut p_keep)
+        .add_option(&["-k", "--keep-below-p"], Store, "p value cutoff of variants to keep after first iter");
         ap.refer(&mut threads)
         .add_option(&["-t", "--threads"], Store, "Number of threads to use.");
         ap.refer(&mut output_forest)
@@ -85,7 +83,7 @@ fn main() {
             std::process::exit(1);
         }
     }
-    let k_vars = f.keep_vars(var_cutoff_1);
+    let k_vars = f.keep_vars(p_keep);
     eprintln!("Keeping {:?} variants and initiating iterative grow and prune.", &k_vars.len());
     &data.set_genotype_indices(k_vars);
     eprintln!("Growing forest 1 of {:?}", n_iter);
@@ -97,19 +95,20 @@ fn main() {
                 break
             }
         }
-        let f_vars = f.mask_vars(var_cutoff_2);
-        eprintln!("Masking {:?} variants and growing forest {:?} of {:?}.", &f_vars.len(), n + 1, n_iter);
-        &data.mask_vars(f_vars);
+        println!("## ITERATION: {}", n);
+        println!("#OVERALL_IMPORTANCE");
+        f.print_var_importance(&variants);
+        if output_forest {
+            //Output trees
+            for tree in f.trees.as_ref().unwrap() {
+                println!("#TREE");
+                tree.print(&0, "0");
+            };
+        }
+
+        eprintln!("Growing forest {:?} of {:?}.", n + 1, n_iter);
     }
-    println!("#OVERALL_IMPORTANCE");
-    f.print_var_importance(&variants);
-    if output_forest {
-        //Output trees
-        for tree in f.trees.unwrap() {
-            println!("#TREE");
-            tree.print(&0, "0");
-        };
-    }
+
 }
 
 /// Determine input filetype based on suffix

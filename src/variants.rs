@@ -6,7 +6,7 @@
 
 pub struct Variant {
     pub id: String,
-    pub max_importance: f32
+    pub max_importance: f64
 }
 
 impl Variant {
@@ -16,7 +16,7 @@ impl Variant {
             max_importance: 0.
         }
     }
-    pub fn set_importance(&mut self, imp: f32) {
+    pub fn set_importance(&mut self, imp: f64) {
         self.max_importance = imp
     }
 }

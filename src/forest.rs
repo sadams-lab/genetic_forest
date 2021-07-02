@@ -7,6 +7,7 @@
 use crate::tree;
 use crate::matrix;
 use crate::variants;
+use crate::statistics;
 
 use rayon::prelude::*;
 use indicatif::ParallelProgressIterator;
@@ -42,19 +43,6 @@ impl Forest {
         }
     }
 
-    /// Get variants that were used in the forest
-    /// sorted and deduplicated
-    pub fn get_vars(&self) -> Vec<usize> {
-        let mut vars: Vec<usize> = Vec::new();
-        let tree_imps = self.importance();
-        for (var, _) in tree_imps {
-            vars.push(var);
-        }
-        vars.sort();
-        vars.dedup();
-        vars
-    }
-
     pub fn grow(&mut self, gm: &matrix::GenoMatrix) -> Result<(), io::Error> {
         let t: Vec<tree::Node> = (0..self.hyperparameters.n_tree).into_par_iter()
         .progress_count(self.hyperparameters.n_tree as u64)
@@ -68,8 +56,9 @@ impl Forest {
         Ok(())
     }
 
-    fn importance(&self) -> HashMap<usize, Vec<f32>> {
-        let mut tree_imps: HashMap<usize, Vec<f32>> = HashMap::new();
+    fn get_var_importances(&self) -> HashMap<usize, f64> {
+        let mut tree_imps: HashMap<usize, Vec<f64>> = HashMap::new();
+        let mut var_imps: HashMap<usize, f64> = HashMap::new();
         for tree in self.trees.as_ref().unwrap() {
             if !tree.is_empty {
                 for (var, imp) in tree.get_importance() {
@@ -86,27 +75,23 @@ impl Forest {
                 }
             }
         };
-        tree_imps
+        for (var, imp) in tree_imps {
+            var_imps.insert(var, statistics::mean(&imp.iter().map(|x| x).collect()));
+        };
+        var_imps
     }
 
-    pub fn mask_vars(&self, cutoff: f32) -> Vec<usize> {
-        let mut vars: Vec<usize> = Vec::new();
-        let tree_imps = self.importance();
-        for (var, imp) in tree_imps {
-            let mean: f32 = imp.iter().sum::<f32>() / imp.len() as f32;
-            if mean < cutoff {
-                vars.push(var);
-            }
-        }
-        vars
-    }
 
-    pub fn keep_vars(&self, cutoff: f32) -> Vec<usize> {
+    pub fn keep_vars(&self, p_keep: f64) -> Vec<usize> {
         let mut vars: Vec<usize> = Vec::new();
-        let tree_imps = self.importance();
+        let tree_imps = self.get_var_importances();
+        let importances: Vec<&f64> = tree_imps.values().collect();
+        let imp_mean: f64 = statistics::mean(&importances);
+        let imp_sd: f64 = statistics::std_deviation(&importances);
+        let cutoff: f64 = statistics::get_cutoff(&imp_sd, &imp_mean, &p_keep);
+        eprintln!("{:?},{:?},{:?}", imp_mean, imp_sd, cutoff);
         for (var, imp) in tree_imps {
-            let mean: f32 = imp.iter().sum::<f32>() / imp.len() as f32;
-            if mean >= cutoff {
+            if imp >= cutoff {
                 vars.push(var);
             }
         }
@@ -115,10 +100,9 @@ impl Forest {
     
     /// print the variant + importance to stdout
     pub fn print_var_importance(&self, variants: &Vec<variants::Variant>) {
-        let tree_imps = self.importance();
+        let tree_imps = self.get_var_importances();
         for (var, imp) in tree_imps {
-            let mean: f32 = imp.iter().sum::<f32>() / imp.len() as f32;
-            println!("{}\t{:?}", variants[var].id, mean);
+            println!("{}\t{:?}", variants[var].id, imp);
         }
     }
 }
