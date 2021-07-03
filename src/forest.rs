@@ -43,6 +43,10 @@ impl Forest {
         }
     }
 
+    pub fn update_hyperparameters(&mut self, hp: HyperParameters) {
+        self.hyperparameters = hp
+    }
+
     pub fn grow(&mut self, gm: &matrix::GenoMatrix) -> Result<(), io::Error> {
         let t: Vec<tree::Node> = (0..self.hyperparameters.n_tree).into_par_iter()
         .progress_count(self.hyperparameters.n_tree as u64)

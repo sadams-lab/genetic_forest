@@ -21,6 +21,10 @@ fn main() {
     let mut mtry: f64 = 0.333;
     let mut max_depth: i32 = 5;
     let mut subj_fraction: f64 = 0.666;
+    let mut n_tree_2: i32 = 10;
+    let mut mtry_2: f64 = 0.333;
+    let mut max_depth_2: i32 = 5;
+    let mut subj_fraction_2: f64 = 0.666;
     let mut n_iter: usize = 1; 
     let mut p_keep: f64 = 0.05;
     let mut continuous_outcome: bool = false;
@@ -36,13 +40,21 @@ fn main() {
         ap.refer(&mut variant_file_path)
         .add_option(&["-x", "--variant-file-path"], Store, "Path to file with variant IDs");
         ap.refer(&mut n_tree)
-        .add_option(&["-u", "--num-tree"], Store, "Number of trees to train.");
+        .add_option(&["--num-tree"], Store, "Number of trees to train.");
         ap.refer(&mut mtry)
-        .add_option(&["-y", "--mtry-fraction"], Store, "MTRY fraction.");
+        .add_option(&["--mtry-fraction"], Store, "MTRY fraction.");
         ap.refer(&mut max_depth)
-        .add_option(&["-o", "--max-depth"], Store, "Max tree depth.");
+        .add_option(&["--max-depth"], Store, "Max tree depth.");
         ap.refer(&mut subj_fraction)
-        .add_option(&["-s", "--subject-fraction"], Store, "Fraction of subjects in each random sample.");
+        .add_option(&["--subject-fraction"], Store, "Fraction of subjects in each random sample.");
+        ap.refer(&mut n_tree_2)
+        .add_option(&["--num-tree-2"], Store, "Number of trees to train.");
+        ap.refer(&mut mtry_2)
+        .add_option(&["--mtry-fraction-2"], Store, "MTRY fraction.");
+        ap.refer(&mut max_depth_2)
+        .add_option(&["--max-depth-2"], Store, "Max tree depth.");
+        ap.refer(&mut subj_fraction_2)
+        .add_option(&["--subject-fraction-2"], Store, "Fraction of subjects in each random sample.");
         ap.refer(&mut n_iter)
         .add_option(&["-r", "--iterations"], Store, "Number of iterations of the genetic algorithm.");
         ap.refer(&mut p_keep)
@@ -75,6 +87,13 @@ fn main() {
         subj_fraction: subj_fraction,
         continuous_outcome: continuous_outcome
     };
+    let hp2 = forest::HyperParameters {
+        n_tree: n_tree_2, 
+        mtry: mtry_2, 
+        max_depth: max_depth_2, 
+        subj_fraction: subj_fraction_2,
+        continuous_outcome: continuous_outcome
+    };
     let mut f = forest::Forest::new(hp);
     match f.grow(&data) {
         Ok(_) => (),
@@ -86,8 +105,9 @@ fn main() {
     let k_vars = f.keep_vars(p_keep);
     eprintln!("Keeping {:?} variants and initiating iterative grow and prune.", &k_vars.len());
     &data.set_genotype_indices(k_vars);
-    eprintln!("Growing forest 1 of {:?}", n_iter);
-    for n in 1..n_iter {
+    f.update_hyperparameters(hp2);
+    for n in 1..n_iter + 1 {
+        eprintln!("Growing forest {:?} of {:?}", n, n_iter);
         match f.grow(&data) {
             Ok(_) => (),
             Err(err) => {
@@ -105,8 +125,6 @@ fn main() {
                 tree.print(&0, "0");
             };
         }
-
-        eprintln!("Growing forest {:?} of {:?}.", n + 1, n_iter);
     }
 
 }
