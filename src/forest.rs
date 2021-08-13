@@ -93,7 +93,6 @@ impl Forest {
         let imp_mean: f64 = statistics::mean(&importances);
         let imp_sd: f64 = statistics::std_deviation(&importances);
         let cutoff: f64 = statistics::get_cutoff(&imp_sd, &imp_mean, &p_keep);
-        eprintln!("{:?},{:?},{:?}", imp_mean, imp_sd, cutoff);
         for (var, imp) in tree_imps {
             if imp >= cutoff {
                 vars.push(var);
