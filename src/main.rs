@@ -8,7 +8,6 @@ pub mod forest;
 pub mod utils;
 pub mod variants;
 pub mod statistics;
-pub mod z_table;
 
 use argparse::{ArgumentParser, StoreTrue, Store};
 
@@ -26,7 +25,7 @@ fn main() {
     let mut max_depth_2: i32 = 5;
     let mut subj_fraction_2: f64 = 0.666;
     let mut n_iter: usize = 1; 
-    let mut p_keep: f64 = 0.05;
+    let mut z_keep: f64 = 1.0;
     let mut continuous_outcome: bool = false;
     let mut output_forest: bool = false;
     let mut threads: usize = 1;
@@ -57,8 +56,8 @@ fn main() {
         .add_option(&["--subject-fraction-2"], Store, "Fraction of subjects in each random sample.");
         ap.refer(&mut n_iter)
         .add_option(&["-r", "--iterations"], Store, "Number of iterations of the genetic algorithm.");
-        ap.refer(&mut p_keep)
-        .add_option(&["-k", "--keep-below-p"], Store, "p value cutoff of variants to keep after first iter");
+        ap.refer(&mut z_keep)
+        .add_option(&["-z", "--z-score-cutoff"], Store, "Keep variants with Z score above.");
         ap.refer(&mut threads)
         .add_option(&["-t", "--threads"], Store, "Number of threads to use.");
         ap.refer(&mut output_forest)
@@ -102,7 +101,8 @@ fn main() {
             std::process::exit(1);
         }
     }
-    let k_vars = f.keep_vars(p_keep);
+    f.print_var_importance(&variants);
+    let k_vars = f.keep_vars(z_keep);
     eprintln!("Keeping {:?} variants and initiating iterative grow and prune.", &k_vars.len());
     &data.set_genotype_indices(k_vars);
     f.update_hyperparameters(hp2);

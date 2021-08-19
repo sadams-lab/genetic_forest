@@ -80,21 +80,21 @@ impl Forest {
             }
         };
         for (var, imp) in tree_imps {
-            var_imps.insert(var, statistics::mean(&imp.iter().map(|x| x).collect()));
+            //var_imps.insert(var, statistics::mean(&imp.iter().map(|x| x).collect()));
+            var_imps.insert(var, imp.iter().sum());
         };
         var_imps
     }
 
 
-    pub fn keep_vars(&self, p_keep: f64) -> Vec<usize> {
+    pub fn keep_vars(&self, z_keep: f64) -> Vec<usize> {
         let mut vars: Vec<usize> = Vec::new();
         let tree_imps = self.get_var_importances();
         let importances: Vec<&f64> = tree_imps.values().collect();
         let imp_mean: f64 = statistics::mean(&importances);
         let imp_sd: f64 = statistics::std_deviation(&importances);
-        let cutoff: f64 = statistics::get_cutoff(&imp_sd, &imp_mean, &p_keep);
         for (var, imp) in tree_imps {
-            if imp >= cutoff {
+            if ((imp - imp_mean) / imp_sd) >= z_keep {
                 vars.push(var);
             }
         }

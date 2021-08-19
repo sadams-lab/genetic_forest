@@ -16,6 +16,7 @@ use std::collections::HashMap;
 /// nodes on the heap. In order to 'draw' a tree, one must walk down recursive nodes
 pub struct Node {
     pub score: f64, // gini if binary outcome, sd reduction if continuous
+    pub parent_score: f64,
     pub is_empty: bool,
     pub n: usize, // Number of subjects in tree
     pub neg: bool,
@@ -47,6 +48,7 @@ impl Node {
     pub fn empty_node() -> Self {
         Node {
             score: std::f64::NAN,
+            parent_score: std::f64::NAN,
             is_empty: true,
             n: 0,
             neg: true,
@@ -143,8 +145,8 @@ impl Node {
                 }
 
             } else {
-                let score = calc_gini(&node_data.phenos, k, &parent_score);
-                let score2 = calc_gini(&node_data.phenos_shuffle, k, &parent_score);
+                let score = calc_gini(&node_data.phenos, k);
+                let score2 = calc_gini(&node_data.phenos_shuffle, k);
                 if score < score2 {
                     scores.push(score);
                 }
@@ -170,6 +172,7 @@ impl Node {
         if depth > max_depth {
             return Node {
                 score: score,
+                parent_score: parent_score,
                 is_empty: false,
                 n: n,
                 neg: neg,
@@ -181,6 +184,7 @@ impl Node {
         }
         Node {
             score: score,
+            parent_score: parent_score,
             is_empty: false,
             n: n,
             neg: neg,
@@ -298,10 +302,9 @@ pub fn calc_sdr(p: &Vec<&f64>, g: &Vec<&u8>) -> f64 {
         return 0.
     }
     top_sd - sd_weighted
-
 }
 
-pub fn calc_gini(p: &Vec<&f64>, g: &Vec<&u8>, parent_score: &f64) -> f64 {
+pub fn calc_gini(p: &Vec<&f64>, g: &Vec<&u8>) -> f64 {
     /* 
     vector of genotypes (0,1,2) (g)
     vector of phenotypes (0,1) (p)
@@ -313,8 +316,6 @@ pub fn calc_gini(p: &Vec<&f64>, g: &Vec<&u8>, parent_score: &f64) -> f64 {
     get pheno where p = 1
 
     */
-
-    let pi: f64 = 2.;
 
     let mut p0g0: f64 = 0.;
     let mut p1g0: f64 = 0.;
@@ -334,8 +335,8 @@ pub fn calc_gini(p: &Vec<&f64>, g: &Vec<&u8>, parent_score: &f64) -> f64 {
 
     let p_inst: f64 = p.len() as f64;
 
-    let g0_g = parent_score - (p0g0 / (p0g0+p1g0)).powf(pi) - (p1g0 / (p0g0+p1g0)).powf(pi);
-    let g1_g = parent_score - (p0g1 / (p0g1+p1g1)).powf(pi) - (p1g1 / (p0g1+p1g1)).powf(pi);
+    let g0_g = 1. - ((p0g0 / (p0g0+p1g0)).powi(2) + (p1g0 / (p0g0+p1g0)).powi(2));
+    let g1_g = 1. - ((p0g1 / (p0g1+p1g1)).powi(2) + (p1g1 / (p0g1+p1g1)).powi(2));
 
     let gi = (((p0g0+p1g0)/p_inst) * g0_g) + (((p0g1+p1g1)/p_inst) * g1_g);
     if f64::is_nan(gi) {
