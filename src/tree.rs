@@ -16,7 +16,6 @@ use std::collections::HashMap;
 /// nodes on the heap. In order to 'draw' a tree, one must walk down recursive nodes
 pub struct Node {
     pub score: f64, // gini if binary outcome, sd reduction if continuous
-    pub parent_score: f64,
     pub is_empty: bool,
     pub n: usize, // Number of subjects in tree
     pub neg: bool,
@@ -41,14 +40,13 @@ impl Node {
     pub fn grow(node_data: NodeData, max_depth: i32, ms: matrix::GenoMatrixSlice, continuous_outcome: bool) -> Self {
         let depth: i32 = 0;
         let node_n = node_data.phenos.len();
-        return Node::new_node(&node_data, &ms, &max_depth, &depth, node_n, 1., &continuous_outcome);
+        return Node::new_node(&node_data, &ms, &max_depth, &depth, node_n, &continuous_outcome);
     }
 
     /// An empty node, called internally to allow for terminal nodes that stop growth
     pub fn empty_node() -> Self {
         Node {
             score: std::f64::NAN,
-            parent_score: std::f64::NAN,
             is_empty: true,
             n: 0,
             neg: true,
@@ -101,10 +99,12 @@ impl Node {
                 },
                 None => ()
             };
-            if n.neg {
+            if n.neg & (importance > 0.) {
                 // was this calculated based on shuffled subjects?
                 // If so, it is a negative contribution
                 importance = importance * -1.;
+            } else if importance < 0. {
+                importance = 0.
             }
             if vi.contains_key(&n.var) {
                 let mut n_varvec = vi[&n.var].to_vec();
@@ -122,7 +122,7 @@ impl Node {
 
     /// Recursive function for building the tree
     /// Kicked off when a new tree is created
-    fn new_node(node_data: &NodeData, ms: &matrix::GenoMatrixSlice, max_depth: &i32, depth: &i32, n: usize, parent_score: f64, continuous_outcome: &bool) -> Node {
+    fn new_node(node_data: &NodeData, ms: &matrix::GenoMatrixSlice, max_depth: &i32, depth: &i32, n: usize, continuous_outcome: &bool) -> Node {
         let new_depth = depth + 1;
         let mut best_score_index: usize = 0;
         let mut scores: Vec<f64> = Vec::new(); // Vector of per-genotype scores
@@ -160,6 +160,9 @@ impl Node {
                 best_score_index = utils::get_min_index(&scores); // get lowest Gini score
             };
         }
+        if scores.len() == 0 {
+            return Node::empty_node();
+        }
         let mut score = scores[best_score_index];
         let mut neg: bool = false;
         if score < 0. {
@@ -172,7 +175,6 @@ impl Node {
         if depth > max_depth {
             return Node {
                 score: score,
-                parent_score: parent_score,
                 is_empty: false,
                 n: n,
                 neg: neg,
@@ -184,14 +186,13 @@ impl Node {
         }
         Node {
             score: score,
-            parent_score: parent_score,
             is_empty: false,
             n: n,
             neg: neg,
             node_n: node_data.phenos.len(),
             var: ms.genotype_ids[best_score_index],
-            left: Some(Box::new(Node::new_node(&new_node_data.0, ms, max_depth, &new_depth, n, score, continuous_outcome))),
-            right: Some(Box::new(Node::new_node(&new_node_data.1, ms, max_depth, &new_depth, n, score, continuous_outcome)))
+            left: Some(Box::new(Node::new_node(&new_node_data.0, ms, max_depth, &new_depth, n, continuous_outcome))),
+            right: Some(Box::new(Node::new_node(&new_node_data.1, ms, max_depth, &new_depth, n, continuous_outcome)))
         }
     }
 }
