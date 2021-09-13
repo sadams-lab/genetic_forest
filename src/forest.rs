@@ -93,6 +93,7 @@ impl Forest {
         let importances: Vec<&f64> = tree_imps.values().collect();
         let imp_mean: f64 = statistics::mean(&importances);
         let imp_sd: f64 = statistics::std_deviation(&importances);
+        println!("{:?}", imp_mean);
         for (var, imp) in tree_imps {
             if ((imp - imp_mean) / imp_sd) >= z_keep {
                 vars.push(var);
