@@ -4,8 +4,10 @@ def join_p(p):
     return "\t".join(p)
 
 def joinvar(v):
-    if int(v) == 2:
+    if int(v) == 0:
         return "1"
+    elif int(v) == 2:
+        return "0"
     else:
         return v
 
