@@ -2,12 +2,12 @@
 name = "genetic_forest"
 version = "0.1.0"
 authors = ["Solomon Adams <sadams2013@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 csv = "*"
 sprs = "*"
 rand = "*"
 rayon = "1.5"
-argparse = "0.2.2"
+clap = { version = "3.1.0", features = ["derive"] }
 indicatif = {version = "*", features = ["rayon"]}
